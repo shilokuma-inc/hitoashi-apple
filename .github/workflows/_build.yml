@@ -84,6 +84,29 @@ jobs:
             -parallel-testing-enabled NO \
             ${options[@]+"${options[@]}"}
 
+      - name: Build for macOS
+        # Mac 版がコンパイルできることだけを確かめる（署名はしない。テストは iOS Simulator で実行済み）
+        run: |
+          xcodebuild build \
+            -project "$PROJECT_NAME.xcodeproj" \
+            -scheme "$SCHEME" \
+            -destination "platform=macOS,arch=arm64" \
+            -derivedDataPath DerivedData \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: Build for visionOS
+        # visionOS 版がコンパイルできることだけを確かめる。ランナーの Xcode に visionOS の SDK が無いときは飛ばす
+        run: |
+          if ! xcodebuild -showsdks | grep -q xrsimulator; then
+            echo "::warning::visionOS の SDK が無いため、visionOS のビルドを飛ばしました"
+            exit 0
+          fi
+          xcodebuild build \
+            -project "$PROJECT_NAME.xcodeproj" \
+            -scheme "$SCHEME" \
+            -destination "generic/platform=visionOS Simulator" \
+            -derivedDataPath DerivedData
+
       - name: Upload test results
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v7
