@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		4FB0000000000000000000A1 /* HitoashiKit in Frameworks */ = {isa = PBXBuildFile; productRef = 4FB0000000000000000000A2 /* HitoashiKit */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		4FC9E1FA2BF1049C00F630AB /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -27,6 +31,7 @@
 		4FC9E1E92BF1049B00F630AB /* Hitoashi.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Hitoashi.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		4FC9E1F92BF1049C00F630AB /* HitoashiTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = HitoashiTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		4FC9E2032BF1049C00F630AB /* HitoashiUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = HitoashiUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		4FB0000000000000000000A3 /* HitoashiKit */ = {isa = PBXFileReference; lastKnownFileType = wrapper; name = HitoashiKit; path = Packages/HitoashiKit; sourceTree = "<group>"; };
 		4FB0000000000000000000B1 /* Hitoashi.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Hitoashi.entitlements; sourceTree = "<group>"; };
 		4FB0000000000000000000B2 /* HitoashiMac.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = HitoashiMac.entitlements; sourceTree = "<group>"; };
 		4FA0000000000000000000C1 /* Project.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Project.xcconfig; sourceTree = "<group>"; };
@@ -70,6 +75,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				4FB0000000000000000000A1 /* HitoashiKit in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -96,6 +102,7 @@
 				4FA0000000000000000000B1 /* Hitoashi */,
 				4FA0000000000000000000B2 /* HitoashiTests */,
 				4FA0000000000000000000B3 /* HitoashiUITests */,
+				4FB0000000000000000000A3 /* HitoashiKit */,
 				4FC9E1EA2BF1049B00F630AB /* Products */,
 				4FA0000000000000000000C0 /* Configs */,
 			);
@@ -143,6 +150,9 @@
 				4FA0000000000000000000B1 /* Hitoashi */,
 			);
 			name = Hitoashi;
+			packageProductDependencies = (
+				4FB0000000000000000000A2 /* HitoashiKit */,
+			);
 			productName = Hitoashi;
 			productReference = 4FC9E1E92BF1049B00F630AB /* Hitoashi.app */;
 			productType = "com.apple.product-type.application";
@@ -634,6 +644,10 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 4F27869D2BF373B800E9F5EF /* XCRemoteSwiftPackageReference "SwiftLintPlugins" */;
 			productName = "plugin:SwiftLintBuildToolPlugin";
+		};
+		4FB0000000000000000000A2 /* HitoashiKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = HitoashiKit;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
