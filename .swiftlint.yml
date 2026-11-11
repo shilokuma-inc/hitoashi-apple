@@ -4,6 +4,7 @@
 
 excluded:
   - .build
+  - Packages/*/.build   # ローカルパッケージで swift build / swift test を流したときの生成物
   - DerivedData
   - Configs
   - "**/Package.swift"
