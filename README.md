@@ -1,0 +1,314 @@
+# IOSTemplateApp
+
+iOS Application Template (SwiftUI)
+
+iOS アプリのリポジトリを新規作成するときの GitHub テンプレートリポジトリです。
+SwiftUI のプロジェクト一式と、ビルド・テスト・Archive・TestFlight 配信までの GitHub Actions ワークフローを含みます。
+
+## Environment
+
+- Xcode 26.6
+- iOS 17.0 以上
+- Swift 6（Swift 6 言語モード / Strict Concurrency）
+- SwiftUI / Swift Testing / XCTest（UI テスト）
+- SwiftLint 0.65.1（Build Tool Plugin。バイナリだけを配布する [SwiftLintPlugins](https://github.com/SimplyDanny/SwiftLintPlugins) 経由）
+
+## Status
+
+<div style="margin:0px;padding:0px;">
+  <table width="98%" style="border-collapse: collapse;border:2px double #000080;text-align:center;margin:auto;">
+    <tbody>
+      <tr>
+        <td style="border:2px double #000080;">branch \ workflow</td>
+        <td style="border:2px double #000080;">Build</td>
+        <td style="border:2px double #000080;">Archive</td>
+        <td style="border:2px double #000080;">Upload</td>
+      </tr>
+      <tr>
+        <td style="border:2px double #000080;text-align:left;">main</td>
+        <td style="border:2px double #000080;text-align:center;">
+          <a href="https://github.com/shilokuma-inc/template-app-ios/actions/workflows/build.yml?query=branch%3Amain">
+            <img src="https://github.com/shilokuma-inc/template-app-ios/actions/workflows/build.yml/badge.svg?branch=main" alt="Build">
+          </a>
+        </td>
+        <td style="border:2px double #000080;text-align:center;">
+          <a href="https://github.com/shilokuma-inc/template-app-ios/actions/workflows/archive.yml?query=branch%3Amain">
+            <img src="https://github.com/shilokuma-inc/template-app-ios/actions/workflows/archive.yml/badge.svg?branch=main" alt="Archive">
+          </a>
+        </td>
+        <td style="border:2px double #000080;text-align:center;">
+        </td>
+      </tr>
+      <tr>
+        <td style="border:2px double #000080;text-align:left;">develop</td>
+        <td style="border:2px double #000080;text-align:center;">
+          <a href="https://github.com/shilokuma-inc/template-app-ios/actions/workflows/build.yml?query=branch%3Adevelop">
+            <img src="https://github.com/shilokuma-inc/template-app-ios/actions/workflows/build.yml/badge.svg?branch=develop" alt="Build">
+          </a>
+        </td>
+        <td style="border:2px double #000080;text-align:center;">
+        </td>
+        <td style="border:2px double #000080;text-align:center;">
+          <a href="https://github.com/shilokuma-inc/template-app-ios/actions/workflows/upload.yml?query=branch%3Adevelop">
+            <img src="https://github.com/shilokuma-inc/template-app-ios/actions/workflows/upload.yml/badge.svg?branch=develop" alt="Upload">
+          </a>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+## テンプレートの使い方
+
+### 1. リポジトリを作成する
+
+GitHub の「Use this template」からリポジトリを作成し、clone します。
+
+### 2. プロジェクト名を変更する
+
+`IOSTemplateApp` を新しいアプリ名に一括変更するスクリプトを用意しています。
+ディレクトリ・`.xcodeproj`・スキーム・ソース内の識別子・README のバッジ URL をまとめて置換し、GitHub リポジトリの Discussions を有効にします。
+
+```bash
+scripts/rename.sh MyApp
+```
+
+- アプリ名は英字で始まる英数字のみです（Swift のモジュール名になります）
+- README のバッジ URL と Discussions の有効化に使うリポジトリ名は `origin` から推定します。別のものを使う場合は第 2 引数で `owner/repo` を渡します
+- 作業ツリーがクリーンな状態で実行し、実行後に `git diff` で差分を確認してコミットしてください
+- テンプレートから作成したリポジトリには Discussions の設定が引き継がれず、無効のままになります（ralph-loop はゴールを Discussion で受け取ります）。スクリプトは `gh repo edit --enable-discussions` で有効にするため、`gh` で認証済みで、リポジトリの管理者権限が必要です
+- Discussions を有効にできなかったときは、リネームは止めずに警告と手順を表示します。表示された手順で有効にしてください
+
+### 3. 署名情報を設定する
+
+署名情報やバージョンは pbxproj ではなく [Configs/Project.xcconfig](Configs/Project.xcconfig) に集約しています。
+リポジトリ作成後、まず以下を書き換えてください。
+
+| 設定 | 内容 |
+|---|---|
+| `DEVELOPMENT_TEAM` | Apple Developer Program の Team ID |
+| `APP_BUNDLE_IDENTIFIER` | アプリ本体の Bundle Identifier。テストターゲットは `.Tests` / `.UITests` を付けて自動で派生します |
+| `MARKETING_VERSION` | アプリのバージョン。ビルド番号（`CURRENT_PROJECT_VERSION`）は Upload のときに App Store Connect の最新ビルドを見て Xcode が自動で増やすため、手で上げる必要はありません |
+| `IPHONEOS_DEPLOYMENT_TARGET` | 最低サポート OS |
+
+### 4. GitHub Secrets を設定する
+
+Archive / Upload ワークフローは App Store Connect API Key で認証します。
+リポジトリの Settings → Secrets and variables → Actions に以下を登録してください。
+
+| Secret | 内容 |
+|---|---|
+| `EXPORT_OPTIONS` | `ExportOptions.plist` の内容。[docs/ExportOptions.sample.plist](docs/ExportOptions.sample.plist) の `teamID` を書き換えて、ファイルの中身をそのまま登録します |
+| `APPLE_API_KEY_BASE64` | App Store Connect の API Key（`AuthKey_XXXXXXXXXX.p8`）を `base64 -i AuthKey_XXXXXXXXXX.p8` でエンコードした文字列 |
+| `APPLE_API_KEY_ID` | API Key の Key ID |
+| `APPLE_API_ISSUER_ID` | API Key の Issuer ID |
+
+API Key は App Store Connect の「ユーザとアクセス → 統合 → App Store Connect API」で、App Manager 以上の権限で発行します。
+App Store の掲載情報の反映で使う、審査の連絡先の Secrets（任意）は「8. App Store の掲載情報」を参照してください。
+TestFlight の内部テスターの Secret（任意）は「5. App Store Connect にアプリを作成する」の「TestFlight の内部テスター」を参照してください。
+
+### 5. App Store Connect にアプリを作成する
+
+Bundle ID・証明書・プロビジョニングプロファイルは、Export のときに API Key で自動的に作成されます（`-allowProvisioningUpdates`）。
+App Store Connect でのアプリ作成だけは API で行えないため、Web 画面で行います。
+
+アプリを作らずに `develop` へ push しても問題ありません。Upload ワークフローがアップロードの前にアプリの有無を確認し（[.github/scripts/check-app-store-app.rb](.github/scripts/check-app-store-app.rb)）、アプリが無ければ「新規アプリ」画面に入力する値（名前・バンドル ID・SKU など）を Job Summary に表示して止まります。表示された値でアプリを作成してから、ワークフローを再実行してください。
+
+SKU は Bundle ID と同じ値にします。SKU はユーザーには見えない社内用の ID で、後から変更できないため、迷わないようにルールを固定しています。
+
+#### TestFlight の内部テスター
+
+Upload ワークフローは、アップロードの前に TestFlight の内部テストグループ「Internal Testers」を作り、Secret `TESTFLIGHT_INTERNAL_TESTERS` のメールアドレスを内部テスターに追加します（[.github/scripts/ensure-internal-testers.rb](.github/scripts/ensure-internal-testers.rb)）。グループは「すべてのビルドへのアクセス」を有効にして作るため、以降のビルドは処理が終わりしだい自動で配信されます。2 回目以降の Upload では確認だけで何もしません。
+
+| Secret | 内容 |
+|---|---|
+| `TESTFLIGHT_INTERNAL_TESTERS` | 内部テスターにするメールアドレス。複数のときはカンマ区切り。Organization かリポジトリの Secret に登録します。Organization の Secret に登録しておくと、テンプレートから作ったリポジトリすべてで使われます（private のリポジトリは下の注意を参照）。空なら何もしません |
+
+- メールアドレスは変数（Variables）ではなく Secret に入れてください。変数の値は、ステップの `env:` の表示で Actions のログにそのまま出ます（public のリポジトリのログは誰でも見られます）。Secret の値は `***` で出ます
+- Free プランの Organization の Secret は、private のリポジトリからは使えません。private のリポジトリでは、リポジトリの Secret に登録してください
+- Upload のログ・注釈・Job Summary では、メールアドレスを伏せて「書いた順の何件目か（`t***@example.com`）」で示します。Secret は登録した後に値を見られないので、書いた順を控えておいてください
+- 以前は変数 `TESTFLIGHT_INTERNAL_TESTERS` で渡していました。変数が残っていて Secret が無いと、Upload は変数の値を読まずに内部テスターの設定を省き、Secret に移すよう警告を出します。Secret に移したら、ほかのリポジトリが変数を使っていないかを確かめてから変数を消してください
+- 内部テスターになれるのは App Store Connect のユーザー（「ユーザとアクセス」に登録されているメンバー）だけです
+- テスターの追加に失敗してもアップロードは止めません。失敗した人は何件目かで Job Summary に表示され、原因を追う手がかり（テスターの記録・入っているグループとアプリ・App Store Connect のユーザーか・承諾されていない招待）もあわせて出ます
+- グループの作成とテスターの追加には、API Key が App Manager 以上の権限である必要があります
+
+### 6. ブランチ運用と CI
+
+| ブランチ | Build（ビルド + テスト + SwiftLint） | Archive（IPA Export） | Upload（App Store Connect） |
+|---|:-:|:-:|:-:|
+| `main` | ✅ | ✅ | |
+| `develop` | ✅ | | ✅ |
+| `release/**` | ✅ | | ✅ |
+| その他の作業ブランチ | ✅（Unit テストのみ） | | |
+| Pull Request の作成時（opened / reopened / ready_for_review） | ✅ | | |
+| Fork からの Pull Request | ✅ | | |
+
+- Upload は Archive → IPA Export を含むため、`develop` / `release/**` では Archive を別途実行しません
+- Archive / Upload は Actions タブから手動でも実行できます（Run workflow）。作業ブランチを TestFlight で確認したいときは、Upload を手動実行してそのブランチを選びます
+- リポジトリ変数（Settings → Secrets and variables → Actions → Variables）に `ENABLE_DELIVERY=false` を設定すると Upload をスキップします（Archive は App Store Connect にアプリが無くても通るため止めません）。テンプレートリポジトリ自身はこの設定でアップロードを止めています。テンプレートから作成したリポジトリには引き継がれないため、何もしなければ従来どおり実行されます
+- ドキュメントだけの変更（`**/*.md`、`docs/**`）では Build を実行しません。Upload（`develop` / `release/**` への push）と Archive（`main` への push）は、ドキュメントだけの変更でも実行します
+- 作業ブランチへの push では、時間のかかる UI テスト（`<プロジェクト名>UITests`）を省いて Unit テストだけ実行します。UI テストは Pull Request の作成時と `main` / `develop` / `release/**` への push で実行します。Fork からの Pull Request は push で実行されないため、更新（synchronize）を含むすべてのイベントで UI テストまで実行します
+- Xcode のバージョンは [.github/workflows/_build.yml](.github/workflows/_build.yml) と [.github/workflows/_archive.yml](.github/workflows/_archive.yml) の `xcode-version` で固定しています。Environment の更新時はあわせて変更してください
+
+### 7. PR 本文のスクリーンショット
+
+UI の見た目が変わる変更では、Before / After のスクリーンショットを PR 本文に添付します。
+
+- 画像は GitHub の添付ファイルとしてアップロードします。git の履歴やブランチには含まれず、マージ後も表示され続けます
+  - ブラウザで PR を作る場合は、本文の入力欄に画像をドラッグ & ドロップします
+  - CLI（エージェントを含む）では `gh` の `--attach`（gh v2.99.0 以上）を使います。本文に Markdown の表と `![Before](./before.png)` の形でローカルのパスを書き、同じファイルを `--attach` で渡すと、gh がその場でアップロード先の URL に書き換えます
+  - HTML の `<img src="./before.png">` や `<table>` の中のパスは書き換わりません。表は Markdown で書き、幅をそろえたいときは作成後に `<img width="300">` へ置き換えます（下の例）
+- アップロードした画像は削除できません。個人情報やトークンなどが写っていないか確認してから添付してください
+- Before / After は表で横に並べ、同一条件（同じ端末・OS・外観モード・データ状態）で撮影します
+- 影響する画面が複数ある場合は画面ごとに用意します。新規画面で Before が無い場合は「なし」と書きます
+
+```bash
+# body.md の表に ![Before](./before.png) と ![After](./after.png) を書いておく
+gh pr create --title "..." --body-file body.md --assignee @me \
+  --attach ./before.png --attach ./after.png
+
+# 本文の画像を幅 300 の <img> に置き換える（本文を取得できたときだけ更新する）
+body=$(gh pr view <番号> --json body -q .body) &&
+  printf '%s\n' "$body" \
+  | perl -pe 's{!\[([^\]]*)\]\((https://github\.com/user-attachments/assets/[^)\s]+)\)}{<img src="$2" alt="$1" width="300">}g' \
+  | gh pr edit <番号> --body-file -
+```
+
+### 8. App Store の掲載情報（スクリーンショット・説明文・App 情報・ヘッダー）
+
+App Store のプロダクトページに載せるものは、`AppStore/` の JSON を元ネタにして、手動実行のワークフローで App Store Connect に反映します。
+反映先は「編集できる状態のバージョン」だけで、審査中・配信済みのバージョンには触りません。
+`Metadata/App Store` の dry-run は、編集できるバージョンが無ければ審査中・配信中のバージョンと App 情報の値と比べるので（書き込みはしません）、審査中や配信後も JSON とのずれを確かめられます。
+どのワークフローも、リポジトリ変数 `ENABLE_DELIVERY=false` のリポジトリ（テンプレート自身など）では反映しません。
+
+| ワークフロー | 反映するもの | 元ネタ | ランナー |
+|---|---|---|---|
+| `Screenshots/App Store` | スクリーンショット（iPhone 6.3 inch / iPhone Duo / iPhone 6.9 inch / iPad 13 inch × 各言語） | `AppStore/screenshots.json` / `AppStore/languages.json` / `AppStore/app.json` | 撮影だけ macOS、縮小と反映は ubuntu |
+| `Metadata/App Store` | 名前・サブタイトル・説明文・キーワード・プロモーションテキスト・最新情報・URL・プライバシーポリシーの URL・著作権、カテゴリ・コンテンツの権利・年齢制限・App Review に関する情報・リリースの方法と段階的リリース・価格と配信状況（既定は dry-run） | `AppStore/metadata/*.json` / `AppStore/app_info.json` | ubuntu |
+| `Creative assets/App Store` | プロダクトページのヘッダーと検索結果のクリエイティブアセット（既定は dry-run） | `AppStore/creative_assets.json` / `AppStore/creative/<言語>/` | ubuntu |
+| `Verify/App Store metadata` | PR で、文字数の上限・App 情報の書き方・撮影設定・撮影モードの Scene との対応を検査する | `AppStore/**` | ubuntu |
+
+**スクリーンショット**
+
+- 撮影はアプリの撮影モード（[IOSTemplateApp/Screenshot/ScreenshotDemo.swift](IOSTemplateApp/Screenshot/ScreenshotDemo.swift)）で行います。`Tools/capture_screenshots.sh` が `-screenshot-demo -screenshot-scene <名前>` と言語を起動引数で渡し、アプリはデモデータで目的の画面を開きます
+- 画面を足すときは、`ScreenshotDemo.Scene` に case を足し、`IOSTemplateApp.swift` の `rootView` で開く画面を返し、`AppStore/screenshots.json` の `scenes` に同じ名前を足します（1 表示サイズにつき 10 枚まで）
+- App Store Connect で必須なのは iPhone 6.1 / 6.3 inch（`APP_IPHONE_61`、1206x2622 か 1179x2556）と iPhone Duo（`APP_IPHONE_DUO`）です。iPad に対応するアプリは iPad 13 inch も必須です。大型ディスプレイ（6.5 / 6.7 / 6.9 inch、`APP_IPHONE_67`）は任意ですが、6.3 inch の元になるので必ず撮ります（反映だけ外すなら `display_types` に `APP_IPHONE_61,APP_IPHONE_DUO` のように必要なものだけ書きます）
+- 撮るのはリリースのときだけです。`release/**` ブランチを選んで手動実行します（それ以外のブランチでは止まります）
+- macOS ランナーの枠を開発のビルドと取り合わないよう、撮影は 1 本ずつ流します。6.3 inch（`deriveFrom`）は撮らずに 6.9 inch を ubuntu で縮めて作り、App Store Connect への反映も ubuntu で行います
+- iPhone Duo は Xcode 27.1 と iOS 27.1 のランタイムが要るので、`xcode-27` のランナーで撮ります（`screenshots.json` の `runsOn` / `xcodeVersion`）
+- Simulator のランタイムは、機種ごとに「その機種に対応したもののうち、ビルドする SDK 以下で一番新しいもの」を選びます（iOS 27.1 のランタイムは iPhone Duo にしか対応しないので、Xcode 27.1 でもほかの機種は iOS 27.0 などで撮ります）
+- 手元で撮るなら `Tools/capture_screenshots.sh APP_IPHONE_67 ja`（出力は `build/screenshots/`）
+- 反映は全言語を上げてから、Apple 側の取り込みをまとめて 20 分まで待ちます。同じ画像（順番とチェックサムが一致）が載っている言語は、上げ直さずに取り込みの完了を待つだけにします
+- 反映だけが失敗したとき（Apple 側の取り込みが 20 分で終わらないなど）は、撮り直さずに、入力 `from_run` にその実行の ID を入れて流し直します。その実行の artifact を反映し、同じ画像が載っている言語は上げ直さずに取り込みの完了を待ちます（どのブランチからでも動きます。撮影元は `release/**` の実行に限ります）
+- 流し直しても同じ画像の取り込みが何時間も終わらないときは、Apple 側で止まっています。入力 `reupload_pending` をオンにすると、取り込みが終わっていない画像を含むセットを消して上げ直します
+
+**名前・説明文・最新情報**
+
+- `AppStore/metadata/<言語>.json` と `shared.json` に書きます。テンプレートの仮の文言（`TODO:`）が残っているあいだは反映できません
+- 「このバージョンの最新情報」は `whatsNew` に `{"version": "1.1.0", "text": "…"}` の形で書きます。`version` が反映先のバージョンと一致するときだけ書き込むので、リリースごとに両方を書き換えます（最初のバージョンには最新情報の欄がありません）
+- 名前（`name`）・サブタイトル（`subtitle`）も言語ごとの JSON に書きます（どちらも 30 字まで）。App Store Connect では「App 情報」の項目で、説明文とは別の場所（`appInfoLocalizations`）に書き込みます。アプリを作ったときの言語（日本語）以外は、App Store Connect に App 情報の言語が無いので、`missing_locales` を `create` にして追加します。追加するには `name` が要ります
+- `shared.json` の `privacyPolicyUrl`（プライバシーポリシーの URL。すべてのアプリで必須）は全言語に、`copyright`（著作権。既定は `© 2026 Takumi Muraishi`）はバージョンに書き込みます。shilokuma のアプリのプライバシーポリシーは [shilokuma-inc/shilokuma-web](https://github.com/shilokuma-inc/shilokuma-web) の `privacy/apps.json` にアプリを足して `https://shilokuma.jp/privacy/<slug>/` に置きます
+
+**App 情報・審査の情報・リリースの方法・価格と配信状況**
+
+- `AppStore/app_info.json` に書き、`Metadata/App Store` が説明文の後に続けて反映します（`Tools/upload_app_info.py`）
+
+| 項目 | JSON のキー | 書き込み方 |
+|---|---|---|
+| カテゴリ | `primaryCategory`（必須）・`secondaryCategory`・`primarySubcategories` / `secondarySubcategories` | カテゴリの ID（`UTILITIES` など）で書きます。ID が違えば、使える一覧を出して書き込む前に止まります。カテゴリを変えたときは、書いていない古いサブカテゴリを App Store Connect からも外します |
+| コンテンツの権利 | `contentRightsDeclaration` | 第三者のコンテンツを使わないなら `DOES_NOT_USE_THIRD_PARTY_CONTENT` |
+| 年齢制限 | `ageRating` | 質問ごとの回答。テンプレートはすべて「なし」（4+）なので、広告（`advertising`）・ほかの人の投稿（`userGeneratedContent`）などをアプリに合わせて見直します。`Tools/upload_app_info.py` の一覧にある質問が JSON に無いと PR の検査で落ちます。Apple が足した質問は検査では分からないので、審査に出す前に App Store Connect で未回答の質問が無いかを見ます |
+| App Review に関する情報 | `review`（`demoAccountRequired`・`notesFile` か `notes`） | メモは `notesFile` に書いたファイル（既定は [AppStore/review_notes.txt](AppStore/review_notes.txt)）の英文を書き込みます。差分のログには、メモの内容を出さず字数だけを出します（App Store Connect にある今のメモに秘密が入っていても、public リポジトリのログに残らないようにするため）。連絡先とデモアカウントは JSON に書かず、下の Secrets から渡します。値はログに出しません |
+| リリースの方法 | `release`（`releaseType`・`phasedRelease`。任意） | 省略すると App Store Connect の値を残します（テンプレートでは省略。既存のアプリに取り込んだときに、手動のリリースが自動に変わらないようにするため）。書くと、バージョンごとに、`MANUAL`（承認後に手動でリリース）か `AFTER_APPROVAL`（承認されたら自動でリリース）と、段階的リリース（7 日かけて自動アップデートの対象を広げる）を使うかを書き込みます。日時を指定するリリースと、始まった段階的リリースは扱いません（App Store Connect の画面で操作します） |
+| 価格 | `pricing` | **App Store Connect で未設定のときだけ**無料にします。設定済みなら触りません |
+| 配信状況 | `availability` | **App Store Connect で未設定のときだけ**、すべての国と地域（`"ALL"`）か指定した国と地域で配信します。設定済みなら触りません |
+
+- 価格と配信状況は、最初のリリースの前に一度だけ決める項目です。JSON を書き換えても配信中のアプリの価格や配信先が変わらないよう、設定済みなら書き込みません。変えるときは App Store Connect の「価格および配信状況」で行います
+- App Review に関する情報の連絡先は、次の Secrets から渡します。Organization の Secrets に登録しておくと、テンプレートから作ったリポジトリすべてで使われます。登録していなければ連絡先は書き込まず、Job Summary の「審査に出す前に App Store Connect で入力が要るもの」に出ます
+
+| Secret | 内容 |
+|---|---|
+| `APP_REVIEW_CONTACT_FIRST_NAME` / `APP_REVIEW_CONTACT_LAST_NAME` | 審査の連絡先の名・姓 |
+| `APP_REVIEW_CONTACT_PHONE` | 審査の連絡先の電話番号（`+81 90 1234 5678` のように国番号から） |
+| `APP_REVIEW_CONTACT_EMAIL` | 審査の連絡先のメールアドレス |
+| `APP_REVIEW_DEMO_ACCOUNT_NAME` / `APP_REVIEW_DEMO_ACCOUNT_PASSWORD` | デモアカウント（`review.demoAccountRequired` が `true` のアプリだけ。リポジトリの Secrets に登録します） |
+
+**審査メモと画面収録**
+
+新しいアプリの最初の審査では、Guideline 2.1 - Information Needed で次の 6 つを求められることが多く、出していないと審査が 1 往復止まります（2026-10 に numer0n-lens-ios で実際に返されました）。
+提出の時点で App Review に関する情報の「メモ」と「添付ファイル」に入れておきます。
+
+1. 実機（最新の OS）で撮った画面収録。アプリの起動から始め、典型的な使い方を見せる。アカウントの登録・ログイン・削除、ユーザーの投稿（通報とブロック）、課金があれば、その流れも映す
+2. アプリの目的・対象ユーザー・解決する課題と価値
+3. 主な機能の使い方（ログイン情報やサンプルファイルが要るならそれも）
+4. 使っている外部サービス（データ提供元・認証・決済・AI など）
+5. 地域による機能や内容の違い（無いならそう書く）
+6. 規制のある業種か、第三者の保護された素材（商標・著作物など）を含むか。含むなら使ってよいことを示す資料
+
+- 2〜6 は [AppStore/review_notes.txt](AppStore/review_notes.txt) の雛形の `TODO:` を英語で書き換え、`Metadata/App Store` でメモに反映します。UI が英語でなければ、ボタンの文言を原文のまま引用し、角括弧で英訳を添えると、審査の担当者が画面と突き合わせられます
+- 1 の画面収録は API で反映しないので、App Store Connect の「App Review に関する情報」の添付ファイルに付けます。撮る前に、審査に出すビルドを TestFlight で実機に入れ、一度削除してから入れ直して初回起動の状態にします。集中モードで通知を止め、ホーム画面からアプリを起動するところから撮ります
+- アプリ名や説明文に他社の商標（番組名・ゲーム名など）を入れるなら、6 で聞かれます。許諾が無ければ Guideline 5.2.1（知的財産）で名前を変えるよう求められることがあるので、名前を決める段階で判断します
+
+**プロダクトページのヘッダーと検索結果**（[App Store asset best practices](https://developer.apple.com/app-store/asset-best-practices/)）
+
+- iOS 27 / iPadOS 27 以降の App Store では、スクリーンショットとは別に、プロダクトページのヘッダー（21:9、3840x1646）と検索結果（3:2、3840x2560）に画像を載せられます
+- 元は [AppStore/creative/src/creative.html](AppStore/creative/src/creative.html)。色と文言（`TODO:`）をアプリに合わせて書き換え、6.9 inch のスクリーンショットを撮ってから `Tools/render_creative_assets.sh build/screenshots/APP_IPHONE_67` で書き出し（Google Chrome を使います）、画像もコミットします
+- 端末の枠（`.phone`）は 6.9 inch の iPhone の実物（画面のまわりは片側 2.1mm・画面の角は 62pt）に合わせ、端末の幅から `phone()` で px に直して描きます。枠の寸法に CSS の `%` は使いません。`padding` の `%` は端末ではなく画面全体（3840px）の幅に対する割合になって枠が太くなり、`border-radius` の `%` は角が楕円になって画面の角と同心にならないためです（以前はこれで、枠が実物の 3 倍ほどの太さになっていました）
+- ヘッダーは初めて来た人にアプリのいちばんの価値を 1 つだけ、検索結果は何をするアプリかを実際の画面と一緒に伝えます。端末によって左右が切れるので、大事なものは中央に寄せます。他社のロゴ・価格・URL・受賞歴は入れません
+- `Creative assets/App Store` を `ref-data` → `dry-run` → `upload` の順に流して反映します。置き場所のグループと画像の仕様は、App Asset Library の参照データから引きます
+- `upload` は全言語の画像を上げてから、Apple 側の処理をまとめて 30 分まで待ちます。待ちが切れても、処理が終わった画像は配置してから失敗にします。そのまま流し直せば、前回上げた同じ画像を使って続きから待ちます。何時間たっても処理中のままなら、入力 `reupload_pending` をオンにして、止まった画像を消して上げ直します
+- Asset Library の画像の参照名（`referenceName`）はライブラリの中で一意です。以前は「置き場所 言語 バージョン」だけで名前を付けていたので、同じバージョンに上げ直すと前回の画像と名前が重なり、`409 ENTITY_ERROR.ATTRIBUTE.INVALID.DUPLICATE` で止まりました。今は、参照名に画像の MD5 の先頭 8 文字を入れ、同じ名前の画像があれば上げ直さずに使います（2026-11 に idfa-vault-ios・prime-pick-ios で起きました）
+- 反映したら、App Store Connect のプレビューで iPhone / iPad の見え方を確かめてから審査に出します
+
+**審査に出す前に App Store Connect で手入力するもの**
+
+API が無い・アカウントで一度だけ行うなど、ワークフローで反映できないものです。
+
+| 項目 | 理由・手順 |
+|---|---|
+| アプリの作成（名前・プライマリ言語・バンドル ID・SKU） | API で作れません。「5. App Store Connect にアプリを作成する」の手順で、Upload の Job Summary に出る値で作ります |
+| App Review に関する情報の添付ファイル（実機の画面収録） | API で反映していません。最初の審査では求められることが多いので、上の「審査メモと画面収録」の手順で撮って添付します |
+| App のプライバシー（収集するデータの申告） | API がありません。[IOSTemplateApp/PrivacyInfo.xcprivacy](IOSTemplateApp/PrivacyInfo.xcprivacy) とプライバシーポリシーに合わせて「App のプライバシー」で答え、公開します |
+| 2 つ目以降のバージョンの作成 | 今は App Store Connect の画面で作る運用にしています（「iOS アプリ」の＋）。作らずに `Metadata/App Store` を流すと「編集できる状態のバージョンがありません」で止まります（dry-run は配信中の値と比べます） |
+| ビルドの選択と審査への提出 | リリースの判断なので人が行います。輸出コンプライアンスは [IOSTemplateApp/Info.plist](IOSTemplateApp/Info.plist) の `ITSAppUsesNonExemptEncryption`（`false`）で申告済みなので、聞かれません |
+| デジタルサービス法（EU）の取引業者の情報 | アプリごとではなくアカウントで一度だけ行います（「ビジネス」）。登録済みなら不要です |
+| App プレビュー（動画。任意） | ワークフローでは反映していません。載せるときは App Store Connect のメディアマネージャで追加します |
+
+流す順は、（2 つ目以降のバージョンでは App Store Connect でバージョンを作ってから）`Metadata/App Store` を dry-run で実行して Job Summary の差分を確かめ → `dry_run` を外して実行 → 最後に出る「審査に出す前に App Store Connect で入力が要るもの」を App Store Connect で埋める、です。
+
+## 構成
+
+```
+.
+├── Configs/                 # xcconfig（署名情報・バージョン・Deployment Target）
+├── IOSTemplateApp/          # アプリ本体（SwiftUI）
+├── IOSTemplateAppTests/     # Unit テスト（Swift Testing）
+├── IOSTemplateAppUITests/   # UI テスト（XCTest）
+├── IOSTemplateApp.xcodeproj # 共有スキーム IOSTemplateApp を含む
+├── AppStore/                # App Store の掲載情報（言語・撮る画面・説明文・クリエイティブアセット）
+├── Tools/                   # スクリーンショットの撮影と App Store Connect への反映
+├── docs/                    # ExportOptions.plist のサンプル
+├── scripts/                 # rename.sh
+├── .swiftlint.yml           # SwiftLint 設定
+└── .github/
+    ├── ISSUE_TEMPLATE/      # Issue テンプレート
+    ├── pull_request_template.md
+    ├── scripts/             # check-app-store-app.rb（App Store Connect のアプリの有無を確認）
+    └── workflows/
+        ├── _build.yml       # 共通処理: ビルド + テスト + SwiftLint（workflow_call）
+        ├── _archive.yml     # 共通処理: Archive → Export（→ Upload）（workflow_call）
+        ├── build.yml        # 全ブランチの push / Fork からの PR
+        ├── archive.yml      # main の push
+        ├── upload.yml       # develop / release/** の push
+        ├── app-store-*.yml  # App Store の掲載情報の反映（手動実行）
+        └── verify-app-store-metadata.yml  # 掲載情報の検査（PR）
+```
+
+- プロジェクトはフォルダ同期グループ（Xcode 16 以降の形式）で管理しているため、ファイルの追加・削除で pbxproj は変わりません
+- SwiftLint は Build Tool Plugin として全ターゲットに適用され、CI では `swiftlint lint --strict` としても実行されます。ルールは [.swiftlint.yml](.swiftlint.yml) で管理します
+- CI のワークフローは `*.xcodeproj` の名前と同名の共有スキームが存在することを前提にしています
+- [IOSTemplateApp/PrivacyInfo.xcprivacy](IOSTemplateApp/PrivacyInfo.xcprivacy) はプライバシーマニフェストです。UserDefaults（`@AppStorage`）の利用だけを申告しています。データの収集・トラッキング・ほかの理由の申告が必要な API を足したら、ここと App Store Connect の「App のプライバシー」を更新してください
+
+## License
+
+[MIT License](LICENSE)
