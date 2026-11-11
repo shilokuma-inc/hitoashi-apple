@@ -45,6 +45,16 @@
             skipped = "NO">
             <BuildableReference
                BuildableIdentifier = "primary"
+               BlueprintIdentifier = "HitoashiKitTests"
+               BuildableName = "HitoashiKitTests"
+               BlueprintName = "HitoashiKitTests"
+               ReferencedContainer = "container:Packages/HitoashiKit">
+            </BuildableReference>
+         </TestableReference>
+         <TestableReference
+            skipped = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
                BlueprintIdentifier = "4FC9E2022BF1049C00F630AB"
                BuildableName = "HitoashiUITests.xctest"
                BlueprintName = "HitoashiUITests"
