@@ -1,14 +1,50 @@
-# Hitoashi
+# Hitoashi（ひとあし）
 
-iOS Application Template (SwiftUI)
+予定のついでに、ひと足のばす。カレンダーの予定の **場所と時刻の天気**（WeatherKit）を見て、予定の前後の空き時間に、
+その天気に合った軽い運動を、近くの場所つきで提案・通知する iOS / macOS / visionOS アプリです。
 
-iOS アプリのリポジトリを新規作成するときの GitHub テンプレートリポジトリです。
-SwiftUI のプロジェクト一式と、ビルド・テスト・Archive・TestFlight 配信までの GitHub Actions ワークフローを含みます。
+- 晴れて気持ちいいときは外（近くの公園まで歩く など）、雨・猛暑・強風・暗い時間は屋内（ジム・館内を歩く など）
+- 予定は読み取るだけで、作成・変更はしません。予定の中身は端末から出ません
+- 天気は Apple の WeatherKit、場所は MapKit だけを使います
+
+[shilokuma-inc/template-app-ios](https://github.com/shilokuma-inc/template-app-ios) から作ったリポジトリで、
+ビルド・テスト・Archive・TestFlight 配信までの GitHub Actions ワークフローを含みます。
+
+## ドキュメント
+
+| ファイル | 内容 |
+|---|---|
+| [LEARNINGS.md](LEARNINGS.md) | このリポジトリで分かった、ツールや環境の癖 |
+
+仕様書（コンセプト・機能・画面・判定の仕様・アーキテクチャ）と企画時の資料は、非公開のリポジトリ `shilokuma-inc/hitoashi-spec` で管理しています。
+このリポジトリのコードとドキュメントでは、仕様書を「仕様書 §5-4」のように節の番号で参照しています。
+
+## 構成の概要
+
+1 つのアプリターゲット（`Hitoashi`）で iOS / macOS / visionOS をビルドします。
+判定と計画のロジックは、OS のフレームワークに依存しないローカルパッケージ [Packages/HitoashiKit](Packages/HitoashiKit) にあります。
+
+パッケージのテストは、Simulator を起動せずに macOS の上で流せます（アプリのスキームにも入っているので、Xcode と CI では Simulator でも流れます）。
+
+```bash
+cd Packages/HitoashiKit && swift test
+```
+
+プラットフォームごとのビルド:
+
+```bash
+xcodebuild build -project Hitoashi.xcodeproj -scheme Hitoashi -destination 'generic/platform=iOS Simulator'
+xcodebuild build -project Hitoashi.xcodeproj -scheme Hitoashi -destination 'platform=macOS,arch=arm64'
+xcodebuild build -project Hitoashi.xcodeproj -scheme Hitoashi -destination 'generic/platform=visionOS Simulator'
+```
+
+- Mac 版は App Sandbox を有効にしています（entitlements は `Configs/HitoashiMac.entitlements`）
+- WeatherKit を使うため、App ID に WeatherKit の Capability が必要です（自動署名で登録されます。CI の Mac 版のビルドは署名なしでコンパイルだけ確かめます）
 
 ## Environment
 
 - Xcode 26.6
-- iOS 17.0 以上
+- iOS 26.0 / macOS 26.0 / visionOS 26.0 以上
 - Swift 6（Swift 6 言語モード / Strict Concurrency）
 - SwiftUI / Swift Testing / XCTest（UI テスト）
 - SwiftLint 0.65.1（Build Tool Plugin。バイナリだけを配布する [SwiftLintPlugins](https://github.com/SimplyDanny/SwiftLintPlugins) 経由）
