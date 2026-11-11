@@ -16,9 +16,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "4FC9E1E82BF1049B00F630AB"
-               BuildableName = "IOSTemplateApp.app"
-               BlueprintName = "IOSTemplateApp"
-               ReferencedContainer = "container:IOSTemplateApp.xcodeproj">
+               BuildableName = "Hitoashi.app"
+               BlueprintName = "Hitoashi"
+               ReferencedContainer = "container:Hitoashi.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -36,9 +36,19 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "4FC9E1F82BF1049C00F630AB"
-               BuildableName = "IOSTemplateAppTests.xctest"
-               BlueprintName = "IOSTemplateAppTests"
-               ReferencedContainer = "container:IOSTemplateApp.xcodeproj">
+               BuildableName = "HitoashiTests.xctest"
+               BlueprintName = "HitoashiTests"
+               ReferencedContainer = "container:Hitoashi.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
+         <TestableReference
+            skipped = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "HitoashiKitTests"
+               BuildableName = "HitoashiKitTests"
+               BlueprintName = "HitoashiKitTests"
+               ReferencedContainer = "container:Packages/HitoashiKit">
             </BuildableReference>
          </TestableReference>
          <TestableReference
@@ -46,9 +56,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "4FC9E2022BF1049C00F630AB"
-               BuildableName = "IOSTemplateAppUITests.xctest"
-               BlueprintName = "IOSTemplateAppUITests"
-               ReferencedContainer = "container:IOSTemplateApp.xcodeproj">
+               BuildableName = "HitoashiUITests.xctest"
+               BlueprintName = "HitoashiUITests"
+               ReferencedContainer = "container:Hitoashi.xcodeproj">
             </BuildableReference>
          </TestableReference>
       </Testables>
@@ -68,9 +78,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "4FC9E1E82BF1049B00F630AB"
-            BuildableName = "IOSTemplateApp.app"
-            BlueprintName = "IOSTemplateApp"
-            ReferencedContainer = "container:IOSTemplateApp.xcodeproj">
+            BuildableName = "Hitoashi.app"
+            BlueprintName = "Hitoashi"
+            ReferencedContainer = "container:Hitoashi.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </LaunchAction>
@@ -85,9 +95,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "4FC9E1E82BF1049B00F630AB"
-            BuildableName = "IOSTemplateApp.app"
-            BlueprintName = "IOSTemplateApp"
-            ReferencedContainer = "container:IOSTemplateApp.xcodeproj">
+            BuildableName = "Hitoashi.app"
+            BlueprintName = "Hitoashi"
+            ReferencedContainer = "container:Hitoashi.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </ProfileAction>
