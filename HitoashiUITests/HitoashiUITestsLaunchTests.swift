@@ -1,13 +1,13 @@
 //
-//  IOSTemplateAppUITestsLaunchTests.swift
-//  IOSTemplateAppUITests
+//  HitoashiUITestsLaunchTests.swift
+//  HitoashiUITests
 //
 //  Created by 村石 拓海 on 2024/05/12.
 //
 
 import XCTest
 
-final class IOSTemplateAppUITestsLaunchTests: XCTestCase {
+final class HitoashiUITestsLaunchTests: XCTestCase {
     override static var runsForEachTargetApplicationUIConfiguration: Bool {
         true
     }

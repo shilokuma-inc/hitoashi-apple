@@ -1,13 +1,13 @@
 //
 //  ScreenshotDemo.swift
-//  IOSTemplateApp
+//  Hitoashi
 //
 //  App Store 用スクリーンショットの撮影モード。
 //  Tools/capture_screenshots.sh が次の起動引数でアプリを起動し、目的の画面をデモデータで開かせる。
 //
 //    -screenshot-demo -screenshot-scene <Scene の rawValue> -AppleLanguages (<言語>) -AppleLocale <ロケール>
 //
-//  画面を足すときは、Scene に case を足し、IOSTemplateApp.swift の rootView で開く画面を返し、
+//  画面を足すときは、Scene に case を足し、Hitoashi.swift の rootView で開く画面を返し、
 //  AppStore/screenshots.json の scenes に同じ rawValue を足す（突き合わせは Tools/app_store_config.py が行う）。
 //  デモデータは実データと混ざらないよう、撮影モードのときだけメモリ上やインメモリのストアに用意する。
 //
