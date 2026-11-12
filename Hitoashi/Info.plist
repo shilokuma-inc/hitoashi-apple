@@ -4,5 +4,9 @@
 <dict>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+	<key>NSCalendarsFullAccessUsageDescription</key>
+	<string>予定の時刻・場所・題名を読み取り、予定の前後の空き時間に合う運動を提案します。予定の作成・変更・削除は行いません。題名とメモが端末の外に送られることはありません。</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>拠点（自宅・職場）を現在地から登録するために使います。</string>
 </dict>
 </plist>
