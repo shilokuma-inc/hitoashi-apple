@@ -8,13 +8,15 @@
 
 import Foundation
 import HitoashiKit
+import OSLog
 import UserNotifications
 
 final class NoticeScheduler: NSObject, UNUserNotificationCenterDelegate {
-    private nonisolated static let category = "step"
-    private nonisolated static let openAction = "open"
-    private nonisolated static let skipAction = "skip"
-    private nonisolated static let suggestionKey = "suggestionID"
+    nonisolated private static let category = "step"
+    nonisolated private static let openAction = "open"
+    nonisolated private static let skipAction = "skip"
+    nonisolated private static let suggestionKey = "suggestionID"
+    nonisolated private static let logger = Logger(subsystem: "jp.shilokuma.Hitoashi", category: "notices")
 
     /// 通知を押した・「行く」を選んだとき（提案の id）
     var onOpen: ((String) -> Void)?
@@ -57,6 +59,9 @@ final class NoticeScheduler: NSObject, UNUserNotificationCenterDelegate {
             let trigger = UNCalendarNotificationTrigger(dateMatching: parts, repeats: false)
             try? await center.add(UNNotificationRequest(identifier: notice.id, content: content, trigger: trigger))
         }
+        // 件数と種類だけを記録する（文面や予定の中身は書かない）
+        let kinds = notices.map(\.kind.rawValue).joined(separator: ",")
+        Self.logger.info("scheduled \(notices.count, privacy: .public) [\(kinds, privacy: .public)]")
     }
 
     func cancelAll() {
