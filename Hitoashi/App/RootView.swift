@@ -53,6 +53,10 @@ struct TodayScreen: View {
                 narrow
             }
         }
+        .onChange(of: model.selectedDay) {
+            // 日を変えたら、前の日のひと足を右に出したままにしない
+            selectedID = nil
+        }
         .onChange(of: model.routeToOpen, initial: true) { _, route in
             guard let route else {
                 return
@@ -104,11 +108,15 @@ struct TodayScreen: View {
         .background(Palette.ground)
     }
 
-    /// 広い画面で右に出すひと足。選んでいなければ、表示している日のひと足
+    /// 広い画面で右に出すひと足。選んでいなければ、表示している日のひと足。
+    /// 左のタイムラインに出していない提案（無料のときの 3 日目以降など）は、右にも出さない
     private var shownID: String? {
-        if let selectedID, model.suggestion(id: selectedID) != nil {
+        if let selectedID, model.isShown(selectedID) {
             return selectedID
         }
-        return model.selectedPlan?.top?.id
+        guard let plan = model.selectedPlan else {
+            return nil
+        }
+        return plan.visible.first { $0.id == plan.top?.id }?.id ?? plan.visible.first?.id
     }
 }
