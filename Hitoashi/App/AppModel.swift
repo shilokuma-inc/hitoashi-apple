@@ -44,6 +44,10 @@ final class AppModel {
             let spotsChanged = preferences.coveredWalkEnabled != oldValue.coveredWalkEnabled
                 || preferences.gymEnabled != oldValue.gymEnabled
                 || preferences.gymNames != oldValue.gymNames
+            if spotsChanged {
+                // 前の条件で探している途中のスポットがあれば、その結果は捨てる（材料を入れ替えるより前に届いても書き戻さない）
+                snapshotGeneration += 1
+            }
             Task {
                 if spotsChanged {
                     // 探すスポットの種類が変わったら、探し直す（最後に通知も作り直す）
