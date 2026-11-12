@@ -85,8 +85,11 @@ final class LiveWorldProvider: WorldProviding {
             return saved.value
         }
         let found = await finder.spots(around: coordinate, preferences: preferences)
-        spots.set(found, for: key, now: request.now)
-        return found
+        // 通信の失敗などで調べきれなかった結果は、保存しない（「近くに何も無い」として 7 日残さない）
+        if found.isComplete {
+            spots.set(found.spots, for: key, now: request.now)
+        }
+        return found.spots
     }
 
     /// 予定の場所の解決（仕様書 §5-3 の手順 1〜3）。前後の予定や拠点からの引き継ぎは HitoashiKit が行う
@@ -109,8 +112,17 @@ final class LiveWorldProvider: WorldProviding {
                 hit = saved.value
             } else if lookups < 10 {
                 lookups += 1
-                hit = await finder.geocode(text, near: baseCoordinates.first)
-                geocodes.set(hit, for: text, now: .now)
+                switch await finder.geocode(text, near: baseCoordinates.first) {
+                case .found(let found):
+                    hit = found
+                    geocodes.set(found, for: text, now: .now)
+                case .notFound:
+                    hit = nil
+                    geocodes.set(nil, for: text, now: .now)
+                case .failed:
+                    // 通信の失敗などは覚えない（次の更新で調べ直す）
+                    hit = nil
+                }
             } else {
                 hit = nil
             }

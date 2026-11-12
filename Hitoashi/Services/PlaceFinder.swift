@@ -18,19 +18,30 @@ struct GeocodeHit: Codable, Hashable, Sendable {
     var placeNames: [String]
 }
 
+/// 場所の文字列から位置を引いた結果。「見つからなかった」と「調べられなかった」を分ける
+/// （通信の失敗を「見つからなかった」として覚えてしまわないため）
+enum GeocodeOutcome: Sendable {
+    case found(GeocodeHit)
+    case notFound
+    case failed
+}
+
 struct PlaceFinder {
     /// 場所の文字列から位置を引く。拠点の周辺を優先する
-    func geocode(_ text: String, near base: Coordinate?) async -> GeocodeHit? {
+    func geocode(_ text: String, near base: Coordinate?) async -> GeocodeOutcome {
         let request = MKLocalSearch.Request()
         request.naturalLanguageQuery = text
         request.resultTypes = [.pointOfInterest, .address]
         if let base {
             request.region = MKCoordinateRegion(center: base.clLocation, latitudinalMeters: 60_000, longitudinalMeters: 60_000)
         }
-        guard let item = try? await MKLocalSearch(request: request).start().mapItems.first else {
-            return nil
+        guard let items = await Self.mapItems(MKLocalSearch(request: request)) else {
+            return .failed
         }
-        return Self.hit(item, fallbackName: text)
+        guard let item = items.first else {
+            return .notFound
+        }
+        return .found(Self.hit(item, fallbackName: text))
     }
 
     /// 拠点の登録のための検索（住所・駅名・建物の名前）
@@ -55,31 +66,40 @@ struct PlaceFinder {
         return item.addressRepresentations?.cityWithContext ?? item.address?.shortAddress ?? item.name
     }
 
-    /// 近くのスポット（種類ごと。近い順）
-    func spots(around origin: Coordinate, preferences: Preferences) async -> NearbySpots {
+    /// 近くのスポット（種類ごと。近い順）。
+    /// `isComplete` が false のときは、どれかの検索が通信の失敗などで終わっている（結果を保存しないこと）
+    func spots(around origin: Coordinate, preferences: Preferences) async -> (spots: NearbySpots, isComplete: Bool) {
         var result = NearbySpots()
-        result.parks = await points(around: origin, radius: 1300, categories: [.park, .nationalPark, .beach], as: .park)
-        result.stations = await points(around: origin, radius: 1500, categories: [.publicTransport], as: .station)
+        var isComplete = true
+        // 失敗した検索は、空として扱いつつ、失敗したことを覚えておく
+        func take(_ found: [Spot]?) -> [Spot] {
+            if found == nil {
+                isComplete = false
+            }
+            return found ?? []
+        }
+        result.parks = take(await points(around: origin, radius: 1300, categories: [.park, .nationalPark, .beach], as: .park))
+        result.stations = take(await points(around: origin, radius: 1500, categories: [.publicTransport], as: .station))
             .filter { $0.name.hasSuffix("駅") || $0.name.localizedCaseInsensitiveContains("station") }
         if preferences.coveredWalkEnabled {
-            var covered = await points(around: origin, radius: 450, categories: [.museum, .library, .aquarium], as: .covered)
+            var covered = take(await points(around: origin, radius: 450, categories: [.museum, .library, .aquarium], as: .covered))
             for query in Self.coveredQueries {
-                covered += await named(query, around: origin, radius: 450, as: .covered)
+                covered += take(await named(query, around: origin, radius: 450, as: .covered))
             }
             result.covered = Self.tidy(covered, origin: origin, radius: 450)
         }
         if preferences.gymEnabled {
             var gyms: [Spot] = []
             if preferences.gymNames.isEmpty {
-                gyms = await points(around: origin, radius: 1500, categories: [.fitnessCenter], as: .gym)
+                gyms = take(await points(around: origin, radius: 1500, categories: [.fitnessCenter], as: .gym))
             } else {
                 for name in preferences.gymNames.prefix(3) {
-                    gyms += await named(name, around: origin, radius: 1500, as: .gym)
+                    gyms += take(await named(name, around: origin, radius: 1500, as: .gym))
                 }
             }
             result.gyms = Self.tidy(gyms, origin: origin, radius: 1500)
         }
-        return result
+        return (result, isComplete)
     }
 
     // MARK: - 中身
@@ -88,24 +108,41 @@ struct PlaceFinder {
         Locale.current.language.languageCode?.identifier == "ja" ? ["ショッピングモール", "地下街"] : ["shopping mall"]
     }
 
+    /// MapKit の検索を走らせる。1 件も無いとき（`placemarkNotFound`）は空、通信の失敗などで調べられなかったときは nil
+    private static func mapItems(_ search: MKLocalSearch) async -> [MKMapItem]? {
+        do {
+            return try await search.start().mapItems
+        } catch let error as MKError where error.code == .placemarkNotFound {
+            return []
+        } catch {
+            return nil
+        }
+    }
+
+    /// 種類で探す。調べられなかったときは nil
     private func points(
         around origin: Coordinate,
         radius: CLLocationDistance,
         categories: [MKPointOfInterestCategory],
         as category: SpotCategory
-    ) async -> [Spot] {
+    ) async -> [Spot]? {
         let request = MKLocalPointsOfInterestRequest(center: origin.clLocation, radius: radius)
         request.pointOfInterestFilter = MKPointOfInterestFilter(including: categories)
-        let items = (try? await MKLocalSearch(request: request).start().mapItems) ?? []
+        guard let items = await Self.mapItems(MKLocalSearch(request: request)) else {
+            return nil
+        }
         return Self.tidy(items.compactMap { Self.spot($0, category: category) }, origin: origin, radius: radius)
     }
 
-    private func named(_ query: String, around origin: Coordinate, radius: CLLocationDistance, as category: SpotCategory) async -> [Spot] {
+    /// 名前で探す。調べられなかったときは nil
+    private func named(_ query: String, around origin: Coordinate, radius: CLLocationDistance, as category: SpotCategory) async -> [Spot]? {
         let request = MKLocalSearch.Request()
         request.naturalLanguageQuery = query
         request.resultTypes = .pointOfInterest
         request.region = MKCoordinateRegion(center: origin.clLocation, latitudinalMeters: radius * 2, longitudinalMeters: radius * 2)
-        let items = (try? await MKLocalSearch(request: request).start().mapItems) ?? []
+        guard let items = await Self.mapItems(MKLocalSearch(request: request)) else {
+            return nil
+        }
         return items.compactMap { Self.spot($0, category: category) }
     }
 
