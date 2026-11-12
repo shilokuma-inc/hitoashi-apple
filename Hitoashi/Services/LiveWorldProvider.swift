@@ -27,6 +27,8 @@ final class LiveWorldProvider: WorldProviding {
     }
 
     func snapshot(for request: WorldRequest) async -> WorldSnapshot {
+        // 予報は、取り直せないときでも 24 時間でファイルから消す
+        forecasts.removeExpired(now: request.now)
         let today = request.calendar.startOfDay(for: request.now)
         let end = request.calendar.date(byAdding: .day, value: 10, to: today) ?? today
         let events = calendarService.events(from: today, to: end, calendarIDs: settings.calendarIDs)

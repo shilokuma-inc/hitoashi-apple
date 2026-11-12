@@ -3,7 +3,8 @@
 //  Hitoashi
 //
 //  小さな保存（予報・スポット・ジオコーディングの結果）。キーごとの値と保存した時刻を、JSON の 1 ファイルに入れる。
-//  期限を過ぎたものは読むときに捨てる。予報は最長 24 時間で必ず消す（WeatherKit の規約。仕様書 §5-10）。
+//  期限を過ぎたものは返さず、開いたとき・書くとき・`removeExpired` を呼んだときにファイルからも消す。
+//  予報は最長 24 時間で必ず消す（WeatherKit の規約。仕様書 §5-10）。
 //
 
 import Foundation
@@ -29,6 +30,25 @@ final class JSONFileCache<Value: Codable> {
         } else {
             entries = [:]
         }
+        removeExpired(now: Date())
+    }
+
+    /// 期限の切れたものを、ファイルからも消す
+    func removeExpired(now: Date) {
+        let kept = entries.filter { now.timeIntervalSince($0.value.savedAt) < lifetime }
+        guard kept.count != entries.count else {
+            return
+        }
+        entries = kept
+        save()
+    }
+
+    private func save() {
+        if entries.isEmpty {
+            try? FileManager.default.removeItem(at: url)
+        } else if let data = try? JSONEncoder().encode(entries) {
+            try? data.write(to: url, options: .atomic)
+        }
     }
 
     /// 保存した値と、保存した時刻。期限を過ぎていれば nil
@@ -41,11 +61,9 @@ final class JSONFileCache<Value: Codable> {
 
     func set(_ value: Value, for key: String, now: Date) {
         entries[key] = Entry(savedAt: now, value: value)
-        // 期限の切れたものは、書くときに消す
+        // 期限の切れたものは、書くときにも消す
         entries = entries.filter { now.timeIntervalSince($0.value.savedAt) < lifetime }
-        if let data = try? JSONEncoder().encode(entries) {
-            try? data.write(to: url, options: .atomic)
-        }
+        save()
     }
 
     func removeAll() {

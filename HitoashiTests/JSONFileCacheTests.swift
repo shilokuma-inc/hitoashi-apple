@@ -46,6 +46,19 @@ struct JSONFileCacheTests {
     }
 
     @Test
+    func removeExpiredDeletesOldValuesFromTheFileWithoutAWrite() {
+        let name = "test-\(UUID().uuidString)"
+        let cache = makeCache(name)
+        cache.set("きのうの予報", for: "tokyo", now: start)
+        // 取り直せない（書き込みが起きない）ままでも、期限が来たらファイルから消える
+        cache.removeExpired(now: start.addingTimeInterval(3600))
+
+        let reopened = makeCache(name)
+        defer { reopened.removeAll() }
+        #expect(reopened.entry(for: "tokyo", now: start) == nil)
+    }
+
+    @Test
     func removeAllDeletesTheFile() {
         let name = "test-\(UUID().uuidString)"
         let cache = makeCache(name)
