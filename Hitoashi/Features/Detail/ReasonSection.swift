@@ -206,8 +206,9 @@ struct DetailNotes: View {
                 WeatherAttributionView()
                 Text("Apple Weather のデータをもとに、ひとあしが判定しています（加工したデータです）。")
                 Text("\(book.time(suggestion.forecastFetchedAt))時点の予報です。")
-                if forecast?.alertsAvailable == false {
-                    Text("この地域では警報の情報を取得できません。")
+                if let forecast, !forecast.alertsAvailable {
+                    // 対応していない地域と、対応しているが一時的に取れていないときを分ける
+                    Text(forecast.alertsSupported ? "いまは、警報の情報を取得できていません。" : "この地域では、警報の情報を取得できません。")
                 }
             }
             Text("大気の状態（煙・PM2.5・花粉）は見ていません。")
