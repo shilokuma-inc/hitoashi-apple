@@ -93,7 +93,7 @@ public enum WeatherAssessor {
             wind = hours.map(\.windSpeed).max() ?? 0
             gust = hours.compactMap(\.windGust).max() ?? 0
             uv = hours.map(\.uvIndex).max() ?? 0
-            wetKind = hours.map(\.kind).first(where: \.isWet)
+            wetKind = hours.map(\.kind).first(where: \.keepsIndoors)
             hasStorm = hours.contains { $0.kind == .severeStorm }
         }
     }

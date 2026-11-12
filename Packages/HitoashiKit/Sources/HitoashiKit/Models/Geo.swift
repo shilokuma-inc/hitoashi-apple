@@ -39,6 +39,17 @@ public struct PlaceCell: Hashable, Sendable, Codable {
         lonIndex = Int((coordinate.longitude / Self.size).rounded(.down))
     }
 
+    /// スポットの検索と保存の単位。0.005°（約 500m）の細かい升目。
+    /// 天気は 2km の升目で足りるが、近くのスポットは場所が 1km ずれると変わるので、細かく持つ
+    public static func fine(_ coordinate: Coordinate) -> PlaceCell {
+        var cell = PlaceCell(coordinate)
+        cell.latIndex = Int((coordinate.latitude / fineSize).rounded(.down))
+        cell.lonIndex = Int((coordinate.longitude / fineSize).rounded(.down))
+        return cell
+    }
+
+    public static let fineSize = 0.005
+
     /// 升目の中心
     public var center: Coordinate {
         Coordinate(

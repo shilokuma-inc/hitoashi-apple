@@ -92,6 +92,19 @@ public enum WeekPlanner {
         return result
     }
 
+    /// スポットを探しに行く場所（細かい升目ごとに 1 つ）。先の日までは探さない
+    public static func requiredSpotPlaces(_ input: Input, dayLimit: Int = 3) -> [ResolvedPlace] {
+        var seen: Set<PlaceCell> = []
+        var result: [ResolvedPlace] = []
+        for day in resolvedDays(input).prefix(dayLimit) {
+            for place in [day.base].compactMap(\.self) + day.events.compactMap(\.place)
+            where seen.insert(PlaceCell.fine(place.coordinate)).inserted {
+                result.append(place)
+            }
+        }
+        return result
+    }
+
     static func resolvedDays(_ input: Input) -> [ResolvedDay] {
         let normalized = EventNormalizer.normalize(input.events, places: input.places, preferences: input.preferences)
         var screens: [String: LocationTextScreener.Result] = [:]

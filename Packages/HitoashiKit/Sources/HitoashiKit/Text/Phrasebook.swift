@@ -107,6 +107,7 @@ public struct Phrasebook: Sendable {
         .snow: ("雪", "Snow"),
         .sleet: ("みぞれ", "Sleet"),
         .windy: ("強風", "Windy"),
+        .smoke: ("煙・砂ぼこり", "Smoke or dust"),
         .severeStorm: ("暴風雨", "Severe storm")
     ]
 

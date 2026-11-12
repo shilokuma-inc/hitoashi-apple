@@ -20,6 +20,7 @@ extension WeatherKind {
         .snow: "cloud.snow",
         .sleet: "cloud.sleet",
         .windy: "wind",
+        .smoke: "smoke",
         .severeStorm: "tropicalstorm"
     ]
 
