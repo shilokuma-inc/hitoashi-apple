@@ -20,7 +20,8 @@ final class JSONFileCache<Value: Codable> {
     private let lifetime: TimeInterval
     private var entries: [String: Entry]
 
-    init(name: String, lifetime: TimeInterval) {
+    /// - Parameter now: 開いたときの時刻（期限切れを捨てる基準。テストでは固定の時刻を渡す）
+    init(name: String, lifetime: TimeInterval, now: Date = Date()) {
         let directory = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first
             ?? FileManager.default.temporaryDirectory
         url = directory.appendingPathComponent("\(name).json")
@@ -30,7 +31,7 @@ final class JSONFileCache<Value: Codable> {
         } else {
             entries = [:]
         }
-        removeExpired(now: Date())
+        removeExpired(now: now)
     }
 
     /// 期限の切れたものを、ファイルからも消す

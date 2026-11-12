@@ -13,8 +13,9 @@ import Testing
 struct JSONFileCacheTests {
     private let start = Date(timeIntervalSince1970: 1_800_000_000)
 
-    private func makeCache(_ name: String, lifetime: TimeInterval = 3600) -> JSONFileCache<String> {
-        JSONFileCache<String>(name: name, lifetime: lifetime)
+    /// 開くときの時刻も固定にする（実際の時刻で期限切れを捨てると、テストが日付に左右される）
+    private func makeCache(_ name: String, lifetime: TimeInterval = 3600, now: Date? = nil) -> JSONFileCache<String> {
+        JSONFileCache<String>(name: name, lifetime: lifetime, now: now ?? start)
     }
 
     @Test
@@ -39,7 +40,7 @@ struct JSONFileCacheTests {
         // 2 時間後に別の値を書くと、期限の切れた値はファイルからも消える
         first.set("新しい", for: "new", now: start.addingTimeInterval(7200))
 
-        let second = makeCache(name)
+        let second = makeCache(name, now: start.addingTimeInterval(7200))
         defer { second.removeAll() }
         #expect(second.entry(for: "new", now: start.addingTimeInterval(7200))?.value == "新しい")
         #expect(second.entry(for: "old", now: start) == nil)
