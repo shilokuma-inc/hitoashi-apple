@@ -32,7 +32,6 @@ struct StepDetailView: View {
                     dismiss()
                 }
             }
-            .accessibilityIdentifier("detail")
         } else {
             ContentUnavailableView("このひと足は、もうありません", systemImage: "clock")
         }

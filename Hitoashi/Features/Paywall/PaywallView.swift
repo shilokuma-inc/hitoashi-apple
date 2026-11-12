@@ -81,7 +81,6 @@ struct PaywallView: View {
         .safeAreaInset(edge: .bottom, spacing: 0) {
             footer
         }
-        .accessibilityIdentifier("paywall")
     }
 
     private var plans: some View {

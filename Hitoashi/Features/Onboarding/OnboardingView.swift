@@ -59,7 +59,6 @@ struct OnboardingView: View {
         }
         .ignoresSafeArea(edges: step == .intro ? .top : [])
         .background(Palette.ground)
-        .accessibilityIdentifier("onboarding")
     }
 
     private var buttonTitle: LocalizedStringKey {

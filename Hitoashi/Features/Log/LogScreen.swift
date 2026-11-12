@@ -55,7 +55,6 @@ struct LogScreen: View {
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .background(Palette.ground)
-        .accessibilityIdentifier("log")
     }
 
     private func legend(_ week: WeekSummary) -> some View {
