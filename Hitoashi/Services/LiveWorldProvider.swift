@@ -105,7 +105,8 @@ final class LiveWorldProvider: WorldProviding {
         var places: [String: ResolvedPlace] = [:]
         let baseCoordinates = bases.map(\.coordinate)
         var lookups = 0
-        for event in events {
+        // 辞退した・キャンセルされた予定は計画に使わないので、調べない（上限の 10 件を使わせない）
+        for event in events where !event.isCanceled && !event.isDeclined {
             if let coordinate = event.coordinate {
                 let name = (event.locationText ?? "").split(whereSeparator: \.isNewline).first.map(String.init) ?? ""
                 places[event.id] = ResolvedPlace(coordinate: coordinate, name: name, source: .eventCoordinate)
@@ -121,9 +122,10 @@ final class LiveWorldProvider: WorldProviding {
             } else if lookups < 10 {
                 lookups += 1
                 switch await finder.geocode(text, near: baseCoordinates.first) {
-                case .found(let found):
-                    hit = found
-                    geocodes.set(found, for: text, now: .now)
+                case .found(let candidates):
+                    // 先頭が遠すぎても、使える候補があればそれを使う。覚えるのは、使うと決めた結果だけ
+                    hit = candidates.first { accepts($0, for: text, bases: baseCoordinates) }
+                    geocodes.set(hit, for: text, now: .now)
                 case .notFound:
                     hit = nil
                     geocodes.set(nil, for: text, now: .now)
@@ -134,17 +136,16 @@ final class LiveWorldProvider: WorldProviding {
             } else {
                 hit = nil
             }
-            guard let hit, LocationTextScreener.acceptsGeocode(
-                text: text,
-                result: hit.coordinate,
-                resultPlaceNames: hit.placeNames,
-                bases: baseCoordinates
-            ) else {
+            guard let hit, accepts(hit, for: text, bases: baseCoordinates) else {
                 continue
             }
             places[event.id] = ResolvedPlace(coordinate: hit.coordinate, name: text, source: .geocoded)
         }
         return places
+    }
+
+    private func accepts(_ hit: GeocodeHit, for text: String, bases: [Coordinate]) -> Bool {
+        LocationTextScreener.acceptsGeocode(text: text, result: hit.coordinate, resultPlaceNames: hit.placeNames, bases: bases)
     }
 
     /// 場所の文字列ごとに覚えた位置を捨てる（拠点が変わったとき）

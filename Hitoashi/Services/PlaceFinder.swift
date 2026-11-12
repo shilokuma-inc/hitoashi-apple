@@ -21,7 +21,8 @@ struct GeocodeHit: Codable, Hashable, Sendable {
 /// 場所の文字列から位置を引いた結果。「見つからなかった」と「調べられなかった」を分ける
 /// （通信の失敗を「見つからなかった」として覚えてしまわないため）
 enum GeocodeOutcome: Sendable {
-    case found(GeocodeHit)
+    /// 候補（MapKit が返した順。先頭が遠すぎることがあるので、使えるものを呼び出し側で選ぶ）
+    case found([GeocodeHit])
     case notFound
     case failed
 }
@@ -38,10 +39,10 @@ struct PlaceFinder {
         guard let items = await Self.mapItems(MKLocalSearch(request: request)) else {
             return .failed
         }
-        guard let item = items.first else {
+        guard !items.isEmpty else {
             return .notFound
         }
-        return .found(Self.hit(item, fallbackName: text))
+        return .found(items.prefix(5).map { Self.hit($0, fallbackName: text) })
     }
 
     /// 拠点の登録のための検索（住所・駅名・建物の名前）
