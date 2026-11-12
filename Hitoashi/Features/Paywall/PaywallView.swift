@@ -85,7 +85,6 @@ struct PaywallView: View {
         .safeAreaInset(edge: .bottom, spacing: 0) {
             footer
         }
-        .accessibilityIdentifier("paywall")
     }
 
     private var store: Store? { model.environment.store }

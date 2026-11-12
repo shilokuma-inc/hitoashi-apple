@@ -108,7 +108,6 @@ struct SettingsScreen: View {
             .tint(Palette.ink2)
             .navigationTitle("設定")
         }
-        .accessibilityIdentifier("settings")
     }
 
     private var gymNames: Binding<String> {
