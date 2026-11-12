@@ -231,6 +231,22 @@ struct ChoiceTests {
     }
 
     @Test
+    func choosingAnotherSpotOffersTheOriginalOneInItsPlace() async throws {
+        let model = AppModel(environment: .demo())
+        await model.refresh()
+        let top = try #require(model.selectedPlan?.top)
+        let original = try #require(top.plan.spot)
+        let other = try #require(top.otherSpots.first)
+        model.choose(spot: other, for: top)
+        let resolved = try #require(model.suggestion(id: top.id))
+        // 選んだ場所は候補から消え、もとの場所に戻せる
+        #expect(resolved.plan.spot?.id == other.id)
+        #expect(!resolved.otherSpots.contains { $0.id == other.id })
+        #expect(resolved.otherSpots.first?.id == original.id)
+        #expect(resolved.otherSpots.count == top.otherSpots.count)
+    }
+
+    @Test
     func hiddenStepsAreNotShownForFreeUsers() async throws {
         let model = AppModel(environment: .demo())
         await model.refresh()

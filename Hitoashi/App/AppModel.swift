@@ -255,6 +255,9 @@ final class AppModel {
             let label: AlternatePlan.Label = suggestion.plan.activity.isOutdoor ? .ifClear : .ifRain
             result.alternate = AlternatePlan(label: label, plan: suggestion.plan)
             result.otherSpots = []
+        } else if let chosen = plan.spot, let original = suggestion.plan.spot, chosen.id != original.id {
+            // 場所だけ選び直したら、選んだ場所は候補から外し、もとの場所を「戻す先」として先頭に入れる
+            result.otherSpots = [original] + suggestion.otherSpots.filter { $0.id != chosen.id }
         }
         return result
     }
