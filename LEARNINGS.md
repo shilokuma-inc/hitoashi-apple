@@ -21,6 +21,8 @@
 - アプリを親にして走るテスト（HitoashiTests の Swift Testing）は、`xcodebuild test` の標準出力に結果が出ない（出るのはパッケージのテストだけ）。走った数は `xcrun xcresulttool get test-results summary --path <xcresult>` で確かめる（2026-11-12）
 - `Logger` の `info` は、`log show` に `--info` を付けないと出ない。通知を予約した件数は `xcrun simctl spawn <udid> log show --last 5m --info --predicate 'subsystem == "jp.shilokuma.Hitoashi" AND category == "notices"'` で見られる（2026-11-12）
 - 子のボタンに付けた `accessibilityIdentifier` は、親のコンテナ（`ScrollView` や `VStack`）にも識別子を付けると上書きされ、UI テストから見つからなくなる。画面全体には識別子を付けない（2026-11-12）
+- MapKit の種類だけの検索（`MKLocalPointsOfInterestRequest` に `.publicTransport`）は 36 件ほどで打ち切られ、街なかではバス停とタクシー乗り場で埋まって駅が 1 件も返らない。駅は `MKLocalSearch.Request` の `naturalLanguageQuery = "駅"` に `pointOfInterestFilter`（`.publicTransport`）を足して探し、名前で「のりば・乗り場・タクシー・バス」を外す。保存の中身（Simulator のアプリのコンテナの `Library/Caches/spots.json`）を見ると、種類ごとの件数を確かめられる（2026-11-12）
+- MapKit の検索は、1 件も無いときに `MKError.placemarkNotFound` を投げる。`try?` でまとめて握りつぶすと、通信の失敗と区別できず、「見つからなかった」として保存してしまう。保存する前に分ける（2026-11-12）
 
 ## デザイン・実装
 
