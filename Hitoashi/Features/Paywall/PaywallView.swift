@@ -88,7 +88,43 @@ struct PaywallView: View {
     private var store: Store? { model.environment.store }
     private var yearlyPrice: String { store?.yearly?.displayPrice ?? "¥2,800" }
     private var monthlyPrice: String { store?.monthly?.displayPrice ?? "¥400" }
-    private var trialDays: Int { store?.yearly?.freeTrialDays ?? 14 }
+
+    /// 年額の無料体験の日数。使えないとき（すでに使った人・設定されていない）は nil。
+    /// 見本のデータのときは、デザインの見本の値（14 日）を出す
+    private var trialDays: Int? {
+        guard let store, let yearly = store.yearly else {
+            return 14
+        }
+        return store.isEligibleForTrial ? yearly.freeTrialDays : nil
+    }
+
+    private var yearlyNote: LocalizedStringKey {
+        if let trialDays {
+            return "月あたり約 \(monthlyEquivalent)・\(trialDays)日間無料"
+        }
+        return "月あたり約 \(monthlyEquivalent)"
+    }
+
+    private var startTitle: LocalizedStringKey {
+        guard selected == .yearly else {
+            return "月額 \(monthlyPrice) ではじめる"
+        }
+        if let trialDays {
+            return "\(trialDays)日間無料ではじめる"
+        }
+        return "年額 \(yearlyPrice) ではじめる"
+    }
+
+    /// ボタンの下の、請求の説明。無料体験を使えない人に「◯日目に請求」と書かない
+    private var billingNote: LocalizedStringKey {
+        guard selected == .yearly else {
+            return "今日 \(monthlyPrice) が請求され、その後は 1か月ごとに自動更新。期間が終わる 24時間前までに解約すれば、次の請求はありません。"
+        }
+        if let trialDays {
+            return "\(trialDays + 1)日目に \(yearlyPrice) が請求され、その後は 1年ごとに自動更新。無料期間が終わる 24時間前までに解約すれば請求されません。"
+        }
+        return "今日 \(yearlyPrice) が請求され、その後は 1年ごとに自動更新。期間が終わる 24時間前までに解約すれば、次の請求はありません。"
+    }
 
     /// 年額を 12 で割った、月あたりの目安
     private var monthlyEquivalent: String {
@@ -105,7 +141,7 @@ struct PaywallView: View {
 
     private var plans: some View {
         VStack(spacing: 0) {
-            planRow(.yearly, price: yearlyPrice, unit: "/ 年", note: "月あたり約 \(monthlyEquivalent)・\(trialDays)日間無料")
+            planRow(.yearly, price: yearlyPrice, unit: "/ 年", note: yearlyNote)
             planRow(.monthly, price: monthlyPrice, unit: "/ 月", note: "無料体験なし")
             Rectangle().fill(Palette.line).frame(height: 1)
         }
@@ -144,8 +180,10 @@ struct PaywallView: View {
 
     private var footer: some View {
         VStack(spacing: 8) {
-            Button(selected == .yearly ? "\(trialDays)日間無料ではじめる" : "月額 \(monthlyPrice) ではじめる") {
+            Button {
                 Task { await start() }
+            } label: {
+                Text(startTitle)
             }
             .buttonStyle(PrimaryButtonStyle())
             .disabled(isBusy || !canPurchase)
@@ -156,10 +194,8 @@ struct PaywallView: View {
                     Text("いまは購入できません（商品の情報を取得できませんでした）。")
                 } else if failed {
                     Text("購入を完了できませんでした。")
-                } else if selected == .yearly {
-                    Text("\(trialDays + 1)日目に \(yearlyPrice) が請求され、その後は 1年ごとに自動更新。無料期間が終わる 24時間前までに解約すれば請求されません。")
                 } else {
-                    Text("今日 \(monthlyPrice) が請求され、その後は 1か月ごとに自動更新。期間が終わる 24時間前までに解約すれば、次の請求はありません。")
+                    Text(billingNote)
                 }
             }
             .type(.note)

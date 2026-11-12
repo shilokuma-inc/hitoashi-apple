@@ -20,6 +20,8 @@ final class Store {
     private(set) var monthly: Product?
     /// Pro の権利があるか
     private(set) var isPro = false
+    /// 年額の無料体験を使えるか（すでに使った人は使えない。ペイウォールの文面を変える）
+    private(set) var isEligibleForTrial = true
     /// 権利が変わったとき
     var onChange: ((Bool) -> Void)?
 
@@ -47,6 +49,13 @@ final class Store {
         let products = (try? await Product.products(for: Self.productIDs)) ?? []
         yearly = products.first { $0.id == Self.yearlyID }
         monthly = products.first { $0.id == Self.monthlyID }
+        await checkTrial()
+    }
+
+    private func checkTrial() async {
+        if let subscription = yearly?.subscription {
+            isEligibleForTrial = await subscription.isEligibleForIntroOffer
+        }
     }
 
     /// いま有効な権利を確かめる
@@ -64,6 +73,7 @@ final class Store {
             isPro = active
             onChange?(active)
         }
+        await checkTrial()
     }
 
     /// 購入の結果を受け取る

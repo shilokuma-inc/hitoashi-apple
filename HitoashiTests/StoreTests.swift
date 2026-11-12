@@ -34,6 +34,8 @@ struct StoreTests {
         // 無料体験は年額だけ（14 日間）
         #expect(yearly.freeTrialDays == 14)
         #expect(monthly.freeTrialDays == nil)
+        // まだ買っていないので、無料体験を使える
+        #expect(store.isEligibleForTrial)
         #expect(yearly.price == 2800)
         #expect(monthly.price == 400)
     }
