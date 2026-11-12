@@ -69,6 +69,7 @@ public enum DayPlanner {
         public var events: [DayEvent]
         public var dayBase: ResolvedPlace?
         public var forecasts: [PlaceCell: PlaceForecast]
+        /// スポット。細かい升目（`PlaceCell.fine`）ごと
         public var spots: [PlaceCell: NearbySpots]
         public var preferences: Preferences
         public var isPro: Bool
@@ -169,7 +170,7 @@ public enum DayPlanner {
             if let suggestion = SuggestionEngine.suggest(
                 slot: slot,
                 forecast: forecast,
-                spots: input.spots[slot.place.cell] ?? .empty,
+                spots: input.spots[PlaceCell.fine(slot.place.coordinate)] ?? .empty,
                 preferences: input.preferences,
                 context: context
             ) {

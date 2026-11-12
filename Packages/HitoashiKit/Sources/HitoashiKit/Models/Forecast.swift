@@ -13,6 +13,8 @@ public enum WeatherKind: String, Hashable, Sendable, Codable, CaseIterable {
     case snow
     case sleet
     case windy
+    /// 煙・砂ぼこり
+    case smoke
     /// 台風・熱帯低気圧・暴風雪など
     case severeStorm
 
@@ -21,10 +23,13 @@ public enum WeatherKind: String, Hashable, Sendable, Codable, CaseIterable {
         switch self {
         case .drizzle, .rain, .heavyRain, .thunder, .snow, .sleet:
             true
-        case .clear, .partlyCloudy, .cloudy, .fog, .windy, .severeStorm:
+        case .clear, .partlyCloudy, .cloudy, .fog, .windy, .smoke, .severeStorm:
             false
         }
     }
+
+    /// 外を勧めない天気（雨・雪・雷に、煙・砂ぼこりを足したもの）
+    public var keepsIndoors: Bool { isWet || self == .smoke }
 }
 
 /// 時間ごとの予報。値は ℃・m/s・mm/h

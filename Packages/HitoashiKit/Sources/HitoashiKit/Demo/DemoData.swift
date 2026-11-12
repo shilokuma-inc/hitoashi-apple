@@ -146,7 +146,7 @@ public enum DemoData {
     }
 
     private static func makeSpots() -> [PlaceCell: NearbySpots] {
-        [PlaceCell(shibuya): shibuyaSpots, PlaceCell(work): workSpots, PlaceCell(home): homeSpots]
+        [PlaceCell.fine(shibuya): shibuyaSpots, PlaceCell.fine(work): workSpots, PlaceCell.fine(home): homeSpots]
     }
 
     private static var shibuyaSpots: NearbySpots {
@@ -226,7 +226,21 @@ public enum DemoData {
         DaySpec(kind: .clear, high: 17, low: 7)
     ]
 
-    private static func forecast(cell: PlaceCell, fetchedAt: Date, alertToday: Bool) -> PlaceForecast {
+    /// 見本の天気を、好きな日から 10 日ぶん作る（実データの流れを、天気だけ見本にして確かめるときに使う）
+    public static func sampleForecast(for cell: PlaceCell, fetchedAt: Date, calendar: Calendar) -> PlaceForecast {
+        let today = calendar.startOfDay(for: fetchedAt)
+        return forecast(cell: cell, fetchedAt: fetchedAt, alertToday: false) { day, hour, minute in
+            let start = calendar.date(byAdding: .day, value: day, to: today) ?? today
+            return start.addingTimeInterval(TimeInterval(hour * 3600 + minute * 60))
+        }
+    }
+
+    private static func forecast(
+        cell: PlaceCell,
+        fetchedAt: Date,
+        alertToday: Bool,
+        date: (_ day: Int, _ hour: Int, _ minute: Int) -> Date = { DemoData.date(day: $0, hour: $1, minute: $2) }
+    ) -> PlaceForecast {
         var hours: [HourForecast] = []
         var days: [DayForecast] = []
         var specs = daySpecs
@@ -234,11 +248,11 @@ public enum DemoData {
             specs[0] = DaySpec(kind: .heavyRain, high: 14, low: 11, rainHours: 0..<24, rainChance: 0.95, wind: 9)
         }
         for (index, spec) in specs.enumerated() {
-            let sunrise = date(day: index, hour: 6, minute: 14 + index)
-            let sunset = date(day: index, hour: 16, minute: 38 - index / 2)
+            let sunrise = date(index, 6, 14 + index)
+            let sunset = date(index, 16, 38 - index / 2)
             days.append(
                 DayForecast(
-                    date: date(day: index, hour: 0),
+                    date: date(index, 0, 0),
                     kind: spec.kind,
                     high: spec.high,
                     low: spec.low,
@@ -248,7 +262,7 @@ public enum DemoData {
                 )
             )
             for hour in 0..<24 {
-                hours.append(hourForecast(spec: spec, day: index, hour: hour))
+                hours.append(hourForecast(spec: spec, date: date(index, hour, 0), hour: hour))
             }
         }
         let alerts = alertToday
@@ -264,7 +278,7 @@ public enum DemoData {
         return PlaceForecast(cell: cell, fetchedAt: fetchedAt, hours: hours, days: days, alerts: alerts)
     }
 
-    private static func hourForecast(spec: DaySpec, day: Int, hour: Int) -> HourForecast {
+    private static func hourForecast(spec: DaySpec, date: Date, hour: Int) -> HourForecast {
         // 6 時がいちばん低く、14 時がいちばん高い
         let phase = cos(Double(hour - 14) / 24 * 2 * .pi)
         let temperature = (spec.high + spec.low) / 2 + (spec.high - spec.low) / 2 * phase
@@ -279,7 +293,7 @@ public enum DemoData {
             kind = spec.kind
         }
         return HourForecast(
-            date: date(day: day, hour: hour),
+            date: date,
             kind: kind,
             temperature: temperature.rounded(),
             apparentTemperature: (temperature - (spec.wind > 5 ? 3 : 1)).rounded(),

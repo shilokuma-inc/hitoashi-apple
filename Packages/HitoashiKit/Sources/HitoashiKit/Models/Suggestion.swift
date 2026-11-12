@@ -72,6 +72,24 @@ public struct NearbySpots: Hashable, Sendable, Codable {
     }
 
     public static let empty = NearbySpots()
+
+    /// 使う地点から見て、近い順に並べ直す。同じ名前の場所（駅の改札・公園の入口・同じ名前の別の施設）は、その地点に近いほうだけを残す。
+    /// スポットは升目ごとに探して保存するので、並びと重複の整理は、保存のときでなく使うときに、実際の地点で行う
+    public func arranged(from origin: Coordinate) -> NearbySpots {
+        func arrange(_ list: [Spot]) -> [Spot] {
+            var seen: Set<String> = []
+            return list
+                .sorted { origin.distance(to: $0.coordinate) < origin.distance(to: $1.coordinate) }
+                .filter { seen.insert($0.name).inserted }
+        }
+        return NearbySpots(
+            parks: arrange(parks),
+            stations: arrange(stations),
+            covered: arrange(covered),
+            gyms: arrange(gyms),
+            tracks: arrange(tracks)
+        )
+    }
 }
 
 /// 歩き方
@@ -135,6 +153,8 @@ public enum Headline: Hashable, Sendable {
     case rainLikely(chance: Double)
     /// 降るかもしれない（外は気をつけて）
     case rainPossible(chance: Double)
+    /// 煙・砂ぼこり（屋内）
+    case smoke
     case windy(speed: Double)
     case dark
     case uv(Int)

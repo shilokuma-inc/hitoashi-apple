@@ -44,7 +44,9 @@ public enum SuggestionEngine {
         let day = forecast.day(containing: first.interval.start, calendar: context.calendar)
         let dark = isDark(first.interval, forecast: forecast, day: day)
         let verdict = WeatherAssessor.assess(hours: forecast.hours(overlapping: first.interval), severeAlerts: alerts, isDark: dark)
-        let builder = PlanBuilder(slot: slot, spots: spots, preferences: preferences, context: context, budget: budget, target: target)
+        // スポットは、この空き時間の場所から見て近い順に並べ、同じ名前は近いほうだけにする
+        let nearby = spots.arranged(from: slot.place.coordinate)
+        let builder = PlanBuilder(slot: slot, spots: nearby, preferences: preferences, context: context, budget: budget, target: target)
 
         let decision = decide(
             verdict: verdict,

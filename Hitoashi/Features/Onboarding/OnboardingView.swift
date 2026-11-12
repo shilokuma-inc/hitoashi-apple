@@ -12,6 +12,7 @@ import SwiftUI
 struct OnboardingView: View {
     @Environment(AppModel.self) private var model
     @State private var step = Step.intro
+    @State private var isAdvancing = false
 
     enum Step: Int {
         case intro
@@ -27,17 +28,20 @@ struct OnboardingView: View {
                 case .intro:
                     IntroPage()
                 case .calendar:
-                    page(title: "予定を読ませてください。", lead: "予定の時刻と場所から、前後の空き時間を見つけます。") {
+                    page(title: "予定を読ませて\nください。", lead: "予定の時刻と場所から、\n前後の空き時間を見つけます。") {
                         fact("読むだけです", "予定の作成・変更・削除はしません。")
                         fact("題名とメモは、端末の外に出ません", "場所の名前だけ、位置を調べるために Apple に送ります。開発者には届きません。")
                         fact("このあと「フルアクセス」と表示されます", "読み取りだけの許可が用意されていないためです。")
                     }
                 case .bases:
-                    page(title: "ふだん、どこにいますか。", lead: "場所の入っていない予定は、ここにいるものとして提案します。") {
-                        ForEach(model.bases) { base in
-                            fact(base.kind == .home ? "自宅" : "職場", LocalizedStringKey(base.name))
+                    page(title: "ふだん、\nどこにいますか。", lead: "場所の入っていない予定は、\nここにいるものとして提案します。") {
+                        VStack(spacing: 0) {
+                            BaseRows()
+                                .type(.body)
+                                .padding(.vertical, 12)
+                                .ruledRow()
                         }
-                        Text("平日は職場、休日は自宅を使います。あとから設定で変えられます。")
+                        Text("どちらか 1 つでも大丈夫です。平日は職場、休日は自宅を使います。")
                             .type(.note)
                             .foregroundStyle(Palette.ink2)
                             .padding(.top, 12)
@@ -50,9 +54,10 @@ struct OnboardingView: View {
                 }
             }
             Button(buttonTitle) {
-                advance()
+                Task { await advance() }
             }
             .buttonStyle(PrimaryButtonStyle())
+            .disabled(isAdvancing)
             .padding(.horizontal, 24)
             .padding(.vertical, 12)
             .accessibilityIdentifier("onboarding.next")
@@ -70,11 +75,22 @@ struct OnboardingView: View {
         }
     }
 
-    private func advance() {
+    private func advance() async {
+        // 許可の確認や更新を待つあいだに二度押されても、ページを飛ばさない
+        guard !isAdvancing else {
+            return
+        }
+        isAdvancing = true
+        defer { isAdvancing = false }
+        // カレンダーの説明のあとで、OS の確認を出す（見本のデータのときは出さない）
+        if step == .calendar {
+            await model.requestCalendarAccess()
+        }
         if let next = Step(rawValue: step.rawValue + 1) {
             step = next
         } else {
             model.hasOnboarded = true
+            Task { await model.refresh() }
         }
     }
 

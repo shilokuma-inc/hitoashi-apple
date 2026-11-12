@@ -107,6 +107,7 @@ public struct Phrasebook: Sendable {
         .snow: ("雪", "Snow"),
         .sleet: ("みぞれ", "Sleet"),
         .windy: ("強風", "Windy"),
+        .smoke: ("煙・砂ぼこり", "Smoke or dust"),
         .severeStorm: ("暴風雨", "Severe storm")
     ]
 
@@ -233,7 +234,7 @@ public struct Phrasebook: Sendable {
             return isJapanese
                 ? "体感\(temperature(apparent))。歩くのにちょうどいい"
                 : "Feels like \(temperature(apparent)). Good for a walk"
-        case .rainUntil, .rainFrom, .rainLikely, .rainPossible, .dark, .sunsetIn, .goldenHour:
+        case .rainUntil, .rainFrom, .rainLikely, .rainPossible, .smoke, .dark, .sunsetIn, .goldenHour:
             return skyHeadline(headline)
         }
     }
@@ -249,6 +250,8 @@ public struct Phrasebook: Sendable {
             isJapanese ? "降水確率\(percent(chance))。屋根のあるところで" : "\(percent(chance)) chance of rain. Stay under cover"
         case .rainPossible(let chance):
             isJapanese ? "降水確率\(percent(chance))。傘があると安心" : "\(percent(chance)) chance of rain. Bring an umbrella"
+        case .smoke:
+            isJapanese ? "煙や砂ぼこりの予報。きょうは屋内で" : "Smoke or dust in the air. Stay indoors"
         case .dark:
             isJapanese ? "日没後。明るい通りを" : "After dark. Keep to lit streets"
         case .sunsetIn(let value):

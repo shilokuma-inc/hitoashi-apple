@@ -28,6 +28,20 @@ struct TodayTimeline: View {
                     if let rest = plan.restDay {
                         RestDayBlock(rest: rest)
                     }
+                    if model.refreshedAt == nil {
+                        // 最初の更新が終わるまで（予定・場所・天気を集めているあいだ）
+                        HStack(spacing: 10) {
+                            ProgressView()
+                            Text("予定と天気を読み込んでいます")
+                                .type(.sub)
+                                .foregroundStyle(Palette.ink2)
+                        }
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 16)
+                    }
+                    if !model.isDemo {
+                        SetupHints(plan: plan)
+                    }
                     rows(for: plan)
                     if plan.hiddenCount > 0 {
                         MoreStepsRow(count: plan.hiddenCount)
@@ -47,6 +61,9 @@ struct TodayTimeline: View {
         .background(Palette.ground)
         .refreshable {
             await model.refresh()
+        }
+        .task(id: model.selectedDay) {
+            await model.loadSpotsForSelectedDay()
         }
     }
 
@@ -158,15 +175,30 @@ struct DayHeader: View {
 /// 「この時刻に知らせる」（通知が未許可のとき。押したときに許可を求める）
 struct NotifyRow: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.openURL) private var openURL
     var suggestion: Suggestion
+
+    /// 通知の設定を開く URL（許可されなかったあとは、押し直しても OS の確認は出ないので、ここへ案内する）
+    private static var settingsURL: URL? {
+        #if os(macOS)
+        URL(string: "x-apple.systempreferences:com.apple.Notifications-Settings.extension")
+        #else
+        URL(string: UIApplication.openNotificationSettingsURLString)
+        #endif
+    }
 
     var body: some View {
         Button {
-            Task { await model.enableNotices() }
+            if model.noticesDenied, let url = Self.settingsURL {
+                openURL(url)
+            } else {
+                Task { await model.enableNotices(for: suggestion.window.start) }
+            }
         } label: {
-            Label("この時刻に知らせる", systemImage: "bell")
+            Label(model.noticesDenied ? "通知が許可されていません。設定を開く" : "この時刻に知らせる", systemImage: "bell")
                 .type(.subStrong)
                 .foregroundStyle(Palette.ink)
+                .multilineTextAlignment(.leading)
                 .ruledRow()
         }
         .buttonStyle(.plain)

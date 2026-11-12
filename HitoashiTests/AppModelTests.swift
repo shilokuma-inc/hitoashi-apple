@@ -31,6 +31,33 @@ struct AppModelTests {
     }
 
     @Test
+    func refreshRequestedDuringARefreshRunsOnceMore() async {
+        let provider = GatedProvider()
+        var environment = AppEnvironment.demo()
+        environment.provider = provider
+        let model = AppModel(environment: environment)
+
+        let first = Task { await model.refresh() }
+        while provider.calls == 0 {
+            await Task.yield()
+        }
+        // 1 回目が材料を集めている途中で、もう一度頼む（予定が変わった・拠点を変えた、など）
+        let second = Task { await model.refresh() }
+        // 2 回目が「もう一度」の印を立てた（1 回目に合流した）のを確かめてから、門を開ける
+        while !model.needsAnotherRefresh {
+            await Task.yield()
+        }
+        #expect(provider.calls == 1)
+
+        provider.open()
+        await first.value
+        await second.value
+        // 途中に来た更新は捨てずに、いまの更新のあとにやり直す
+        #expect(provider.calls == 2)
+        #expect(!model.isRefreshing)
+    }
+
+    @Test
     func proShowsEveryStepAndTheOutlook() async {
         let model = await makeModel()
         model.isPro = true
@@ -236,5 +263,27 @@ struct SettingsStoreTests {
         preferences.jogEnabled = true
         store.preferences = preferences
         #expect(store.preferences == preferences)
+    }
+}
+
+/// 1 回目の呼び出しだけ、`open()` まで待たせる材料の取得口
+@MainActor
+private final class GatedProvider: WorldProviding {
+    private(set) var calls = 0
+    private var gate: CheckedContinuation<Void, Never>?
+    private var isOpen = false
+
+    func snapshot(for request: WorldRequest) async -> WorldSnapshot {
+        calls += 1
+        if calls == 1, !isOpen {
+            await withCheckedContinuation { gate = $0 }
+        }
+        return .empty
+    }
+
+    func open() {
+        isOpen = true
+        gate?.resume()
+        gate = nil
     }
 }

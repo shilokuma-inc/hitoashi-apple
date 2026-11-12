@@ -39,7 +39,18 @@ xcodebuild build -project Hitoashi.xcodeproj -scheme Hitoashi -destination 'gene
 ```
 
 - Mac 版は App Sandbox を有効にしています（entitlements は `Configs/HitoashiMac.entitlements`）
-- WeatherKit を使うため、App ID に WeatherKit の Capability が必要です（自動署名で登録されます。CI の Mac 版のビルドは署名なしでコンパイルだけ確かめます）
+- WeatherKit を使うため、App ID に WeatherKit が必要です。Capabilities の側は自動署名で付きますが、**App Services** の側は Apple Developer のサイト（Identifiers → 対象の App ID → App Services）で手で有効にします。有効にするまで、予報を取れません（CI の Mac 版のビルドは署名なしでコンパイルだけ確かめます）
+- 課金（StoreKit 2）は、手元では `HitoashiTests/Hitoashi.storekit` の設定ファイルで動きます（スキームの実行時の設定に入れてあります）。App Store Connect の商品はまだ作っていません
+
+確認用の起動引数（`-screenshot-demo` のほかは DEBUG のビルドだけ）:
+
+| 引数 | 内容 |
+|---|---|
+| `-screenshot-demo YES -screenshot-scene <場面>` | 見本のデータで、決まった画面を開く（`home` / `rainyDay` / `restDay` / `pro` / `detail` / `log` / `settings` / `onboarding` / `paywall`） |
+| `-debug-sample-weather YES` | 予報だけを見本の値にして、カレンダー・場所・スポット・通知は実データで動かす（WeatherKit が使えない環境向け） |
+| `-weather-probe YES` | WeatherKit から予報を 1 回取り、結果を標準出力に出す |
+| `-seed-calendar YES` | Simulator のカレンダーに、確認用の予定を入れる |
+| `-window-snapshot YES` | Mac 版のウインドウを PNG にして標準出力へ書き出す |
 
 ## Environment
 

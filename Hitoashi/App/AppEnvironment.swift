@@ -18,6 +18,29 @@ struct AppEnvironment {
     var clock: @Sendable () -> Date
     /// 見本のデータで動いているか
     var isDemo: Bool
+    /// カレンダー（実データのときだけ）
+    var calendarService: CalendarService?
+    /// 通知の予約
+    var notices: NoticeScheduler?
+    /// サブスク
+    var store: Store?
+
+    /// 実データで動かす
+    static func live(notices: NoticeScheduler, store: Store) -> AppEnvironment {
+        let settings = SettingsStore()
+        let calendarService = CalendarService()
+        return AppEnvironment(
+            provider: LiveWorldProvider(calendarService: calendarService, settings: settings),
+            settings: settings,
+            logs: LogStore(inMemory: false),
+            calendar: .autoupdatingCurrent,
+            clock: { Date() },
+            isDemo: false,
+            calendarService: calendarService,
+            notices: notices,
+            store: store
+        )
+    }
 
     /// 見本のデータで動かす（撮影モード・UI テスト・プレビュー）
     static func demo(alertToday: Bool = false, settings: SettingsStore = .ephemeral()) -> AppEnvironment {

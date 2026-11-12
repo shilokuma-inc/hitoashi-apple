@@ -8,6 +8,7 @@
 
 import HitoashiKit
 import SwiftUI
+import WeatherKit
 
 struct ReasonSection: View {
     @Environment(AppModel.self) private var model
@@ -219,17 +220,42 @@ struct DetailNotes: View {
     }
 }
 
-/// 天気データの帰属表示（Apple Weather の印と、データソースへのリンク）
+/// 天気データの帰属表示（Apple Weather の印と、データソースへのリンク）。
+/// 印とリンク先は WeatherKit から取る。取れるまでは、文字の印と既定のリンクを出す
 struct WeatherAttributionView: View {
+    @Environment(\.colorScheme) private var colorScheme
+    @State private var attribution: WeatherAttribution?
+
+    private static let fallbackURL = URL(string: "https://developer.apple.com/weatherkit/data-source-attribution/")
+
     var body: some View {
         HStack(spacing: 10) {
-            Text(verbatim: " Weather")
-                .fontWeight(.semibold)
-            if let url = URL(string: "https://developer.apple.com/weatherkit/data-source-attribution/") {
+            if let attribution {
+                AsyncImage(url: colorScheme == .dark ? attribution.combinedMarkDarkURL : attribution.combinedMarkLightURL) { image in
+                    image
+                        .resizable()
+                        .scaledToFit()
+                } placeholder: {
+                    mark
+                }
+                .frame(height: 13)
+                .accessibilityLabel("Apple Weather")
+            } else {
+                mark
+            }
+            if let url = attribution?.legalPageURL ?? Self.fallbackURL {
                 Link("ほかのデータソース", destination: url)
                     .underline()
             }
         }
         .foregroundStyle(Palette.ink2)
+        .task {
+            attribution = try? await WeatherService.shared.attribution
+        }
+    }
+
+    private var mark: some View {
+        Text(verbatim: "\u{F8FF} Weather")
+            .fontWeight(.semibold)
     }
 }

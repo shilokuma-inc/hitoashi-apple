@@ -27,23 +27,46 @@ public struct Coordinate: Hashable, Sendable, Codable {
     }
 }
 
-/// 天気の取得と保存の単位。座標を 0.02°（約 2km）の升目に丸めたもの（仕様書 §5-3）
+/// 天気の取得と保存の単位。座標を 0.02°（約 2km）の升目に丸めたもの（仕様書 §5-3）。
+/// スポットには、同じ型の細かい升目（`fine`。0.005°）を使う
 public struct PlaceCell: Hashable, Sendable, Codable {
     public static let size = 0.02
+    public static let fineSize = 0.005
 
     public var latIndex: Int
     public var lonIndex: Int
+    /// この升目の大きさ（度）。天気は 0.02、スポットは 0.005
+    public var span: Double
 
     public init(_ coordinate: Coordinate) {
-        latIndex = Int((coordinate.latitude / Self.size).rounded(.down))
-        lonIndex = Int((coordinate.longitude / Self.size).rounded(.down))
+        self.init(coordinate, span: Self.size)
+    }
+
+    private init(_ coordinate: Coordinate, span: Double) {
+        latIndex = Int((coordinate.latitude / span).rounded(.down))
+        lonIndex = Int((coordinate.longitude / span).rounded(.down))
+        self.span = span
+    }
+
+    /// 大きさを持たない古い保存（天気の升目だけだった）も読めるようにする
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        latIndex = try container.decode(Int.self, forKey: .latIndex)
+        lonIndex = try container.decode(Int.self, forKey: .lonIndex)
+        span = try container.decodeIfPresent(Double.self, forKey: .span) ?? Self.size
+    }
+
+    /// スポットの検索と保存の単位。0.005°（約 500m）の細かい升目。
+    /// 天気は 2km の升目で足りるが、近くのスポットは場所が 1km ずれると変わるので、細かく持つ
+    public static func fine(_ coordinate: Coordinate) -> PlaceCell {
+        PlaceCell(coordinate, span: fineSize)
     }
 
     /// 升目の中心
     public var center: Coordinate {
         Coordinate(
-            latitude: (Double(latIndex) + 0.5) * Self.size,
-            longitude: (Double(lonIndex) + 0.5) * Self.size
+            latitude: (Double(latIndex) + 0.5) * span,
+            longitude: (Double(lonIndex) + 0.5) * span
         )
     }
 

@@ -6,12 +6,40 @@
 //  閉じるボタンは常に見せる。朱は使わない（朱はひと足だけ）。
 //
 
+import StoreKit
 import SwiftUI
 
 struct PaywallView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.purchase) private var purchase
     @State private var selected: Plan = .yearly
+    @State private var isBusy = false
+    @State private var problem: Problem?
+
+    /// ボタンの下に出す、うまくいかなかったときの説明
+    enum Problem {
+        case purchaseFailed
+        case unverified
+        case pending
+        case restoreFailed
+        case nothingToRestore
+
+        var text: LocalizedStringKey {
+            switch self {
+            case .purchaseFailed:
+                "購入を完了できませんでした。"
+            case .unverified:
+                "購入を確認できませんでした。時間をおいて「購入を復元」を試してください。"
+            case .pending:
+                "承認待ちです。承認されると、Pro が使えるようになります。"
+            case .restoreFailed:
+                "復元できませんでした。通信の状態を確かめて、もう一度試してください。"
+            case .nothingToRestore:
+                "復元できる購入がありませんでした。"
+            }
+        }
+    }
 
     enum Plan {
         case yearly
@@ -21,9 +49,7 @@ struct PaywallView: View {
     private let features: [(String, String)] = [
         ("空き時間", "すべてに提案"),
         ("先の日", "3日目から先も"),
-        ("今週", "歩きどき"),
-        ("ほかの画面", "ウィジェットとメニューバー"),
-        ("拠点", "3つ目から")
+        ("今週", "歩きどき")
     ]
 
     var body: some View {
@@ -81,12 +107,82 @@ struct PaywallView: View {
         .safeAreaInset(edge: .bottom, spacing: 0) {
             footer
         }
+        .task {
+            // 起動のときに商品を取れなかった（通信できなかった）場合は、開いたときに取り直す
+            if let store, store.yearly == nil || store.monthly == nil {
+                await store.load()
+            }
+        }
+    }
+
+    private var store: Store? { model.environment.store }
+    // 価格と無料体験は、App Store から取れた商品の値を出す。見本の値（¥2,800・¥400・14 日）を出すのは、見本のデータのときだけ。
+    // 実データで商品をまだ取れていないあいだは「—」「確認中」にして、決まっていない条件を書かない
+    private var yearlyPrice: String { store?.yearly?.displayPrice ?? (model.isDemo ? "¥2,800" : "—") }
+    private var monthlyPrice: String { store?.monthly?.displayPrice ?? (model.isDemo ? "¥400" : "—") }
+
+    /// 年額の無料体験の日数。使えないとき（すでに使った人・設定されていない・まだ確かめられていない）は nil
+    private var trialDays: Int? {
+        if model.isDemo {
+            return 14
+        }
+        guard let store, let yearly = store.yearly else {
+            return nil
+        }
+        return store.isEligibleForTrial ? yearly.freeTrialDays : nil
+    }
+
+    private var yearlyNote: LocalizedStringKey {
+        guard model.isDemo || store?.yearly != nil else {
+            return "確認中"
+        }
+        if let trialDays {
+            return "月あたり約 \(monthlyEquivalent)・\(trialDays)日間無料"
+        }
+        return "月あたり約 \(monthlyEquivalent)"
+    }
+
+    private var startTitle: LocalizedStringKey {
+        guard canPurchase else {
+            return "いまは購入できません"
+        }
+        guard selected == .yearly else {
+            return "月額 \(monthlyPrice) ではじめる"
+        }
+        if let trialDays {
+            return "\(trialDays)日間無料ではじめる"
+        }
+        return "年額 \(yearlyPrice) ではじめる"
+    }
+
+    /// ボタンの下の、請求の説明。無料体験を使えない人に「◯日目に請求」と書かない
+    private var billingNote: LocalizedStringKey {
+        guard selected == .yearly else {
+            return "今日 \(monthlyPrice) が請求され、その後は 1か月ごとに自動更新。期間が終わる 24時間前までに解約すれば、次の請求はありません。"
+        }
+        if let trialDays {
+            return "\(trialDays + 1)日目に \(yearlyPrice) が請求され、その後は 1年ごとに自動更新。無料期間が終わる 24時間前までに解約すれば請求されません。"
+        }
+        return "今日 \(yearlyPrice) が請求され、その後は 1年ごとに自動更新。期間が終わる 24時間前までに解約すれば、次の請求はありません。"
+    }
+
+    /// 年額を 12 で割った、月あたりの目安
+    private var monthlyEquivalent: String {
+        guard let yearly = store?.yearly else {
+            return model.isDemo ? "¥233" : "—"
+        }
+        return (yearly.price / 12).formatted(yearly.priceFormatStyle)
+    }
+
+    /// 見本のデータのときは、購入したことにして画面を見せる。実データで商品を取れていないときは、買えない
+    private var canPurchase: Bool {
+        model.isDemo || (selected == .yearly ? store?.yearly : store?.monthly) != nil
     }
 
     private var plans: some View {
         VStack(spacing: 0) {
-            planRow(.yearly, price: "¥2,800", unit: "/ 年", note: "月あたり約 ¥233・14日間無料")
-            planRow(.monthly, price: "¥400", unit: "/ 月", note: "無料体験なし")
+            planRow(.yearly, price: yearlyPrice, unit: "/ 年", note: yearlyNote)
+            planRow(.monthly, price: monthlyPrice, unit: "/ 月", note: model.isDemo || store?.monthly != nil ? "無料体験なし" : "確認中")
             Rectangle().fill(Palette.line).frame(height: 1)
         }
     }
@@ -124,38 +220,98 @@ struct PaywallView: View {
 
     private var footer: some View {
         VStack(spacing: 8) {
-            Button(selected == .yearly ? "14日間無料ではじめる" : "月額 ¥400 ではじめる") {
-                // 見本のデータのときは、購入したことにして画面を見せる（実際の購入は StoreKit の実装で入れる）
-                if model.isDemo {
-                    model.isPro = true
-                    dismiss()
-                }
+            Button {
+                Task { await start() }
+            } label: {
+                Text(startTitle)
             }
             .buttonStyle(PrimaryButtonStyle())
+            .disabled(isBusy || !canPurchase)
+            .opacity(canPurchase ? 1 : 0.4)
             .accessibilityIdentifier("paywall.start")
             Group {
-                if selected == .yearly {
-                    Text("15日目に ¥2,800 が請求され、その後は 1年ごとに自動更新。無料期間が終わる 24時間前までに解約すれば請求されません。")
+                if let problem {
+                    Text(problem.text)
+                } else if !canPurchase {
+                    HStack(alignment: .firstTextBaseline, spacing: 12) {
+                        Text("いまは購入できません（商品の情報を取得できませんでした）。")
+                        Button("もう一度試す") {
+                            Task { await store?.load() }
+                        }
+                        .type(.captionStrong)
+                        .foregroundStyle(Palette.ink)
+                    }
                 } else {
-                    Text("今日 ¥400 が請求され、その後は 1か月ごとに自動更新。期間が終わる 24時間前までに解約すれば、次の請求はありません。")
+                    Text(billingNote)
                 }
             }
             .type(.note)
             .foregroundStyle(Palette.ink2)
             .frame(maxWidth: .infinity, alignment: .leading)
             HStack(spacing: 0) {
-                Button("購入を復元") {}
-                    .frame(maxWidth: .infinity)
-                Button("利用規約") {}
-                    .frame(maxWidth: .infinity)
-                Button("プライバシー") {}
-                    .frame(maxWidth: .infinity)
+                Button("購入を復元") {
+                    Task { await restore() }
+                }
+                .frame(maxWidth: .infinity)
+                if let terms = URL(string: "https://shilokuma.jp/terms/hitoashi/") {
+                    Link("利用規約", destination: terms)
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                }
+                if let privacy = URL(string: "https://shilokuma.jp/privacy/hitoashi/") {
+                    Link("プライバシー", destination: privacy)
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                }
             }
             .type(.captionStrong)
+            .foregroundStyle(Palette.ink)
             .buttonStyle(PlainRowButtonStyle(color: Palette.ink))
         }
         .padding(.horizontal, 24)
         .padding(.top, 10)
         .barBackground()
+    }
+
+    private func start() async {
+        // 見本のデータのときは、購入したことにして Pro の画面を見せる
+        if model.isDemo {
+            model.isPro = true
+            dismiss()
+            return
+        }
+        guard let store, let product = selected == .yearly ? store.yearly : store.monthly else {
+            return
+        }
+        isBusy = true
+        defer { isBusy = false }
+        do {
+            let result = try await purchase(product)
+            switch await store.handle(result) {
+            case .purchased:
+                problem = nil
+                dismiss()
+            case .pending:
+                problem = .pending
+            case .cancelled:
+                problem = nil
+            case .unverified:
+                problem = .unverified
+            }
+        } catch {
+            problem = .purchaseFailed
+        }
+    }
+
+    private func restore() async {
+        guard let store else {
+            return
+        }
+        isBusy = true
+        defer { isBusy = false }
+        let synced = await store.restore()
+        if store.isPro {
+            dismiss()
+        } else {
+            problem = synced ? .nothingToRestore : .restoreFailed
+        }
     }
 }

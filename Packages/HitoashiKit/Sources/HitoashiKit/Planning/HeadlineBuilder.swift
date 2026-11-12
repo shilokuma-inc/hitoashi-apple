@@ -49,8 +49,9 @@ struct HeadlineBuilder {
                 } else {
                     .rainPossible(chance: chance)
                 }
-            case .wetWeather:
-                .rainLikely(chance: maxChance)
+            case .wetWeather(let kind):
+                // 煙・砂ぼこりで屋内にした日に「降水確率 0%」と書かない
+                kind == .smoke ? .smoke : .rainLikely(chance: maxChance)
             case .wind(let speed):
                 .windy(speed: speed)
             case .dark:
