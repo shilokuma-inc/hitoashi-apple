@@ -33,7 +33,11 @@ final class Store {
         updates = Task {
             await load()
             await refresh()
-            for await _ in Transaction.updates {
+            // 更新・承認待ちの購入など、アプリの外で起きた取引もここに届く。受け取ったら完了にする
+            for await update in Transaction.updates {
+                if case .verified(let transaction) = update {
+                    await transaction.finish()
+                }
                 await refresh()
             }
         }
