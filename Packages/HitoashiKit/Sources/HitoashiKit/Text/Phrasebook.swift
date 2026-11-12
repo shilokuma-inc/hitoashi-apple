@@ -251,7 +251,7 @@ public struct Phrasebook: Sendable {
         case .rainPossible(let chance):
             isJapanese ? "降水確率\(percent(chance))。傘があると安心" : "\(percent(chance)) chance of rain. Bring an umbrella"
         case .smoke:
-            isJapanese ? "煙や砂ぼこりの予報。屋根のあるところで" : "Smoke or dust in the air. Stay under cover"
+            isJapanese ? "煙や砂ぼこりの予報。きょうは屋内で" : "Smoke or dust in the air. Stay indoors"
         case .dark:
             isJapanese ? "日没後。明るい通りを" : "After dark. Keep to lit streets"
         case .sunsetIn(let value):

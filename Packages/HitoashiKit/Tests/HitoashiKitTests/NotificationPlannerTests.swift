@@ -163,7 +163,8 @@ struct PhrasebookTests {
         let verdict = Verdict(level: .indoor, reasons: [.wetWeather(.smoke)])
         #expect(!verdict.isIndoorBecauseOfRain)
         #expect(Verdict(level: .indoor, reasons: [.wetWeather(.rain)]).isIndoorBecauseOfRain)
-        #expect(Fixture.book.headline(.smoke, level: .indoor) == "煙や砂ぼこりの予報。屋根のあるところで")
+        // 屋根の下では煙を避けられないので、「屋内で」と書く
+        #expect(Fixture.book.headline(.smoke, level: .indoor) == "煙や砂ぼこりの予報。きょうは屋内で")
     }
 
     @Test func japaneseHasNoSpaceBetweenNumberAndCounter() {
