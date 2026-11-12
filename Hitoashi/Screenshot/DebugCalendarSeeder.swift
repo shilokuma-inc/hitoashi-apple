@@ -32,38 +32,44 @@ enum DebugCalendarSeeder {
             return
         }
         let shibuya = CLLocation(latitude: 35.6642, longitude: 139.6997)
-        add("定例ミーティング", day: 0, from: 10, to: 11, location: "https://example.com/meeting/000", in: store, calendar)
-        add("打ち合わせ", day: 0, from: 13, to: 14.5, location: "渋谷 神南オフィス", at: shibuya, in: store, calendar)
-        add("1on1", day: 0, from: 16, to: 17, location: "8F Fuji", in: store, calendar)
-        add("会食", day: 0, from: 19, to: 21, location: "恵比寿ガーデンプレイス", in: store, calendar)
-        add("朝会", day: 1, from: 9.5, to: 10, location: nil, in: store, calendar)
-        add("レビュー会", day: 1, from: 14, to: 15.5, location: "東京都千代田区丸の内 2-4-1", in: store, calendar)
+        let samples = [
+            Sample(title: "定例ミーティング", day: 0, start: 10, end: 11, location: "https://example.com/meeting/000"),
+            Sample(title: "打ち合わせ", day: 0, start: 13, end: 14.5, location: "渋谷 神南オフィス", coordinate: shibuya),
+            Sample(title: "1on1", day: 0, start: 16, end: 17, location: "8F Fuji"),
+            Sample(title: "会食", day: 0, start: 19, end: 21, location: "恵比寿ガーデンプレイス"),
+            Sample(title: "朝会", day: 1, start: 9.5, end: 10, location: nil),
+            Sample(title: "レビュー会", day: 1, start: 14, end: 15.5, location: "東京都千代田区丸の内 2-4-1")
+        ]
+        for sample in samples {
+            add(sample, to: calendar, in: store)
+        }
         try? store.commit()
     }
 
-    private static func add(
-        _ title: String,
-        day: Int,
-        from start: Double,
-        to end: Double,
-        location: String?,
-        at coordinate: CLLocation? = nil,
-        in store: EKEventStore,
-        _ calendar: EKCalendar
-    ) {
+    private struct Sample {
+        var title: String
+        var day: Int
+        /// 開始・終了（その日の 0 時からの時間）
+        var start: Double
+        var end: Double
+        var location: String?
+        var coordinate: CLLocation?
+    }
+
+    private static func add(_ sample: Sample, to calendar: EKCalendar, in store: EKEventStore) {
         let today = Calendar.current.startOfDay(for: .now)
         let event = EKEvent(eventStore: store)
-        event.title = title
+        event.title = sample.title
         event.notes = marker
         event.calendar = calendar
-        event.startDate = today.addingTimeInterval(Double(day) * 24 * 3600 + start * 3600)
-        event.endDate = today.addingTimeInterval(Double(day) * 24 * 3600 + end * 3600)
-        if let coordinate, let location {
+        event.startDate = today.addingTimeInterval(Double(sample.day) * 24 * 3600 + sample.start * 3600)
+        event.endDate = today.addingTimeInterval(Double(sample.day) * 24 * 3600 + sample.end * 3600)
+        if let coordinate = sample.coordinate, let location = sample.location {
             let structured = EKStructuredLocation(title: location)
             structured.geoLocation = coordinate
             event.structuredLocation = structured
         } else {
-            event.location = location
+            event.location = sample.location
         }
         try? store.save(event, span: .thisEvent, commit: false)
     }

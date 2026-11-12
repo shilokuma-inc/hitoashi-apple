@@ -23,8 +23,10 @@ enum WeatherProbe {
         do {
             let forecast = try await WeatherFetcher().forecast(for: tokyo, now: .now)
             let first = forecast.hours.first
-            print("WEATHER-PROBE ok hours=\(forecast.hours.count) days=\(forecast.days.count) alertsAvailable=\(forecast.alertsAvailable)")
-            print("WEATHER-PROBE first=\(String(describing: first?.kind)) \(first?.temperature ?? 0)C chance=\(first?.precipitationChance ?? 0)")
+            let summary = "hours=\(forecast.hours.count) days=\(forecast.days.count) alertsAvailable=\(forecast.alertsAvailable)"
+            print("WEATHER-PROBE ok \(summary)")
+            let kind = first.map { String(describing: $0.kind) } ?? "-"
+            print("WEATHER-PROBE first=\(kind) \(first?.temperature ?? 0)C chance=\(first?.precipitationChance ?? 0)")
         } catch {
             print("WEATHER-PROBE error \(error)")
         }

@@ -49,7 +49,10 @@ final class Store {
     func refresh() async {
         var active = false
         for await result in Transaction.currentEntitlements {
-            if case .verified(let transaction) = result, Self.productIDs.contains(transaction.productID), transaction.revocationDate == nil {
+            guard case .verified(let transaction) = result else {
+                continue
+            }
+            if Self.productIDs.contains(transaction.productID), transaction.revocationDate == nil {
                 active = true
             }
         }
