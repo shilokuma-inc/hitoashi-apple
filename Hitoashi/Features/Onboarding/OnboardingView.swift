@@ -90,7 +90,7 @@ struct OnboardingView: View {
             step = next
         } else {
             model.hasOnboarded = true
-            await model.refresh()
+            Task { await model.refresh() }
         }
     }
 

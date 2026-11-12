@@ -31,7 +31,8 @@ extension AppModel {
         }
         let granted = await service.requestAccess()
         calendarRevision += 1
-        await refresh()
+        // 材料の取り直し（場所や天気の取得）は待たない。許可の結果が出たら、すぐ先へ進める
+        Task { await refresh() }
         return granted
     }
 
