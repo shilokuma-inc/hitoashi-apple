@@ -41,8 +41,10 @@ public struct Verdict: Hashable, Sendable {
     public var isIndoorBecauseOfRain: Bool {
         level == .indoor && reasons.contains { reason in
             switch reason {
-            case .precipitation, .wetWeather:
+            case .precipitation:
                 true
+            case .wetWeather(let kind):
+                kind != .smoke
             case .alert, .storm, .heat, .cold, .wind, .dark, .uv:
                 false
             }

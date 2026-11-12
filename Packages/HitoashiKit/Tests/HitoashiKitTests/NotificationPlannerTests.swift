@@ -159,6 +159,13 @@ struct NotificationPlannerTests {
 }
 
 struct PhrasebookTests {
+    @Test func smokeIsNotReportedAsAChanceOfRain() {
+        let verdict = Verdict(level: .indoor, reasons: [.wetWeather(.smoke)])
+        #expect(!verdict.isIndoorBecauseOfRain)
+        #expect(Verdict(level: .indoor, reasons: [.wetWeather(.rain)]).isIndoorBecauseOfRain)
+        #expect(Fixture.book.headline(.smoke, level: .indoor) == "煙や砂ぼこりの予報。屋根のあるところで")
+    }
+
     @Test func japaneseHasNoSpaceBetweenNumberAndCounter() {
         let book = Fixture.book
         #expect(book.minutes(20) == "20分")

@@ -135,6 +135,8 @@ public enum Headline: Hashable, Sendable {
     case rainLikely(chance: Double)
     /// 降るかもしれない（外は気をつけて）
     case rainPossible(chance: Double)
+    /// 煙・砂ぼこり（屋内）
+    case smoke
     case windy(speed: Double)
     case dark
     case uv(Int)
