@@ -116,19 +116,26 @@ struct PaywallView: View {
     }
 
     private var store: Store? { model.environment.store }
-    private var yearlyPrice: String { store?.yearly?.displayPrice ?? "¥2,800" }
-    private var monthlyPrice: String { store?.monthly?.displayPrice ?? "¥400" }
+    // 価格と無料体験は、App Store から取れた商品の値を出す。見本の値（¥2,800・¥400・14 日）を出すのは、見本のデータのときだけ。
+    // 実データで商品をまだ取れていないあいだは「—」「確認中」にして、決まっていない条件を書かない
+    private var yearlyPrice: String { store?.yearly?.displayPrice ?? (model.isDemo ? "¥2,800" : "—") }
+    private var monthlyPrice: String { store?.monthly?.displayPrice ?? (model.isDemo ? "¥400" : "—") }
 
-    /// 年額の無料体験の日数。使えないとき（すでに使った人・設定されていない）は nil。
-    /// 見本のデータのときは、デザインの見本の値（14 日）を出す
+    /// 年額の無料体験の日数。使えないとき（すでに使った人・設定されていない・まだ確かめられていない）は nil
     private var trialDays: Int? {
-        guard let store, let yearly = store.yearly else {
+        if model.isDemo {
             return 14
+        }
+        guard let store, let yearly = store.yearly else {
+            return nil
         }
         return store.isEligibleForTrial ? yearly.freeTrialDays : nil
     }
 
     private var yearlyNote: LocalizedStringKey {
+        guard model.isDemo || store?.yearly != nil else {
+            return "確認中"
+        }
         if let trialDays {
             return "月あたり約 \(monthlyEquivalent)・\(trialDays)日間無料"
         }
@@ -136,6 +143,9 @@ struct PaywallView: View {
     }
 
     private var startTitle: LocalizedStringKey {
+        guard canPurchase else {
+            return "いまは購入できません"
+        }
         guard selected == .yearly else {
             return "月額 \(monthlyPrice) ではじめる"
         }
@@ -159,7 +169,7 @@ struct PaywallView: View {
     /// 年額を 12 で割った、月あたりの目安
     private var monthlyEquivalent: String {
         guard let yearly = store?.yearly else {
-            return "¥233"
+            return model.isDemo ? "¥233" : "—"
         }
         return (yearly.price / 12).formatted(yearly.priceFormatStyle)
     }
@@ -172,7 +182,7 @@ struct PaywallView: View {
     private var plans: some View {
         VStack(spacing: 0) {
             planRow(.yearly, price: yearlyPrice, unit: "/ 年", note: yearlyNote)
-            planRow(.monthly, price: monthlyPrice, unit: "/ 月", note: "無料体験なし")
+            planRow(.monthly, price: monthlyPrice, unit: "/ 月", note: model.isDemo || store?.monthly != nil ? "無料体験なし" : "確認中")
             Rectangle().fill(Palette.line).frame(height: 1)
         }
     }
