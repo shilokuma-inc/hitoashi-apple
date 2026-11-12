@@ -168,7 +168,7 @@ struct NotifyRow: View {
 
     var body: some View {
         Button {
-            Task { await model.enableNotices() }
+            Task { await model.enableNotices(for: suggestion.window.start) }
         } label: {
             Label(model.noticesDenied ? "通知が許可されていません（設定アプリで変えられます）" : "この時刻に知らせる", systemImage: "bell")
                 .type(.subStrong)

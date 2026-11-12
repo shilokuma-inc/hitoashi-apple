@@ -108,16 +108,23 @@ extension AppModel {
 // MARK: - 通知
 
 extension AppModel {
-    /// 「この時刻に知らせる」: 通知の許可を求め、この端末で通知を出すようにする
-    func enableNotices() async {
+    /// 「この時刻に知らせる」: 通知の許可を求め、この端末で通知を出すようにする。
+    /// `day` を渡すと、その日を週の回数の決まりに関わらず「知らせる日」にする（押したひと足の通知が出ないことを避ける）
+    func enableNotices(for day: Date? = nil) async {
         if let notices = environment.notices, !environment.isDemo {
             guard await notices.requestAuthorization() else {
                 noticesDenied = true
                 return
             }
         }
+        noticesDenied = false
         noticesEnabled = true
         environment.settings.noticesEnabled = true
+        if let day {
+            var ledger = environment.settings.ledger
+            ledger.confirmedDays.insert(NotificationPlanner.dayKey(day, calendar: calendar))
+            environment.settings.ledger = ledger
+        }
         await scheduleNotices()
     }
 
