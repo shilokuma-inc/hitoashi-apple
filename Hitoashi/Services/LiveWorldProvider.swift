@@ -78,15 +78,21 @@ final class LiveWorldProvider: WorldProviding {
         return snapshot
     }
 
-    /// 近くのスポット。設定（屋根のあるところ・ジム）が変わったら探し直す
+    /// 升目の中心から角までの距離より少し長い余裕（m）。0.005° の升目は約 555m × 455m で、半分の対角は約 360m
+    private static let cellMargin = 400.0
+
+    /// 近くのスポット。設定（屋根のあるところ・ジム）が変わったら探し直す。
+    /// 保存も使い回しも細かい升目ごとなので、升目の中心から、升目のどこからでも足りる範囲で探す
+    /// （最初に来た地点から探すと、同じ升目の別の地点で「近くに無い」ことになる）。実際に使えるかは、提案の側が距離で決める
     func spots(around coordinate: Coordinate, request: WorldRequest) async -> NearbySpots {
         let preferences = request.preferences
         let signature = "\(preferences.coveredWalkEnabled)-\(preferences.gymEnabled)-\(preferences.gymNames.joined(separator: ","))"
-        let key = "\(PlaceCell.fine(coordinate).key)|\(signature)"
+        let cell = PlaceCell.fine(coordinate)
+        let key = "\(cell.key)|\(signature)"
         if let saved = spots.entry(for: key, now: request.now) {
             return saved.value
         }
-        let found = await finder.spots(around: coordinate, preferences: preferences)
+        let found = await finder.spots(around: cell.center, margin: Self.cellMargin, preferences: preferences)
         // 通信の失敗などで調べきれなかった結果は、保存しない（「近くに何も無い」として 7 日残さない）
         if found.isComplete {
             spots.set(found.spots, for: key, now: request.now)

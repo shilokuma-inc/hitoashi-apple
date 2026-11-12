@@ -67,8 +67,16 @@ struct PlaceFinder {
     }
 
     /// 近くのスポット（種類ごと。近い順）。
+    /// `margin` は、探す範囲に足す余裕（m）。升目の中心から探して升目のどこからでも使えるようにするとき、升目の半分の対角を渡す。
     /// `isComplete` が false のときは、どれかの検索が通信の失敗などで終わっている（結果を保存しないこと）
-    func spots(around origin: Coordinate, preferences: Preferences) async -> (spots: NearbySpots, isComplete: Bool) {
+    func spots(
+        around origin: Coordinate,
+        margin: CLLocationDistance = 0,
+        preferences: Preferences
+    ) async -> (spots: NearbySpots, isComplete: Bool) {
+        let parkRadius = 1300 + margin
+        let farRadius = 1500 + margin
+        let coveredRadius = 450 + margin
         var result = NearbySpots()
         var isComplete = true
         // 失敗した検索は、空として扱いつつ、失敗したことを覚えておく
@@ -78,28 +86,29 @@ struct PlaceFinder {
             }
             return found ?? []
         }
-        result.parks = take(await points(around: origin, radius: 1300, categories: [.park, .nationalPark, .beach], as: .park))
+        result.parks = take(await points(around: origin, radius: parkRadius, categories: [.park, .nationalPark, .beach], as: .park))
         // 駅は「駅」という言葉で探す。種類（公共交通）だけで探すと、件数の上限までバス停とタクシー乗り場で埋まり、
         // 街なかでは駅が 1 件も返らない
-        let stations = take(await named(Self.stationQuery, around: origin, radius: 1500, as: .station, filter: [.publicTransport]))
-        result.stations = Self.tidy(stations.filter { Self.isStationName($0.name) }, origin: origin, radius: 1500)
+        let stations = take(await named(Self.stationQuery, around: origin, radius: farRadius, as: .station, filter: [.publicTransport]))
+        result.stations = Self.tidy(stations.filter { Self.isStationName($0.name) }, origin: origin, radius: farRadius)
         if preferences.coveredWalkEnabled {
-            var covered = take(await points(around: origin, radius: 450, categories: [.museum, .library, .aquarium], as: .covered))
+            let halls: [MKPointOfInterestCategory] = [.museum, .library, .aquarium]
+            var covered = take(await points(around: origin, radius: coveredRadius, categories: halls, as: .covered))
             for query in Self.coveredQueries {
-                covered += take(await named(query, around: origin, radius: 450, as: .covered))
+                covered += take(await named(query, around: origin, radius: coveredRadius, as: .covered))
             }
-            result.covered = Self.tidy(covered, origin: origin, radius: 450)
+            result.covered = Self.tidy(covered, origin: origin, radius: coveredRadius)
         }
         if preferences.gymEnabled {
             var gyms: [Spot] = []
             if preferences.gymNames.isEmpty {
-                gyms = take(await points(around: origin, radius: 1500, categories: [.fitnessCenter], as: .gym))
+                gyms = take(await points(around: origin, radius: farRadius, categories: [.fitnessCenter], as: .gym))
             } else {
                 for name in preferences.gymNames.prefix(3) {
-                    gyms += take(await named(name, around: origin, radius: 1500, as: .gym))
+                    gyms += take(await named(name, around: origin, radius: farRadius, as: .gym))
                 }
             }
-            result.gyms = Self.tidy(gyms, origin: origin, radius: 1500)
+            result.gyms = Self.tidy(gyms, origin: origin, radius: farRadius)
         }
         return (result, isComplete)
     }
@@ -183,13 +192,13 @@ struct PlaceFinder {
         return Spot(id: identifier, name: name, coordinate: coordinate, category: category)
     }
 
-    /// 半径の外と重複を外し、近い順に 8 件まで
+    /// 半径の外と重複を外し、近い順に 12 件まで
     private static func tidy(_ spots: [Spot], origin: Coordinate, radius: CLLocationDistance) -> [Spot] {
         var seen: Set<String> = []
         return spots
             .filter { origin.distance(to: $0.coordinate) <= radius && seen.insert($0.name).inserted }
             .sorted { origin.distance(to: $0.coordinate) < origin.distance(to: $1.coordinate) }
-            .prefix(8)
+            .prefix(12)
             .map(\.self)
     }
 
