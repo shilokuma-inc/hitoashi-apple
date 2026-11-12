@@ -148,7 +148,21 @@ final class AppModel {
         result.plan = plan
         let length = TimeInterval(plan.windowMinutes * 60)
         result.window = DateInterval(start: suggestion.window.start, duration: length)
+        if plan.activity != suggestion.plan.activity {
+            // 代わりの案に入れ替えたら、もとの案を「戻す先」にする。
+            // 「ほかの場所」は、もとの動き方のための候補なので出さない（屋内の案に公園を当てない）
+            let label: AlternatePlan.Label = suggestion.plan.activity.isOutdoor ? .ifClear : .ifRain
+            result.alternate = AlternatePlan(label: label, plan: suggestion.plan)
+            result.otherSpots = []
+        }
         return result
+    }
+
+    /// いまの画面に出している提案か（無料では、今日・明日のひと足 1 件ずつだけ）
+    func isShown(_ id: String) -> Bool {
+        plans.contains { plan in
+            plan.visible.contains { $0.id == id }
+        }
     }
 
     func suggestion(id: String) -> Suggestion? {

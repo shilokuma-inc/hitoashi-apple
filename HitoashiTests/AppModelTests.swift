@@ -186,3 +186,32 @@ struct RailBuilderTests {
         #expect(RailBuilder.notes(for: evening, forecast: forecast, day: day, book: book).map(\.text) == ["日没 16:38"])
     }
 }
+
+@MainActor
+struct ChoiceTests {
+    @Test
+    func switchingToTheAlternateDropsSpotsOfTheOriginalActivity() async throws {
+        let model = AppModel(environment: .demo())
+        await model.refresh()
+        let top = try #require(model.selectedPlan?.top)
+        #expect(!top.otherSpots.isEmpty)
+        model.choose(try #require(top.alternate).plan, for: top)
+        let resolved = try #require(model.suggestion(id: top.id))
+        // 屋内の案に入れ替えたら、公園の候補は出さない。もとの外の案に戻せる
+        #expect(resolved.otherSpots.isEmpty)
+        #expect(resolved.alternate?.label == .ifClear)
+        #expect(resolved.alternate?.plan.activity == .walk)
+    }
+
+    @Test
+    func hiddenStepsAreNotShownForFreeUsers() async throws {
+        let model = AppModel(environment: .demo())
+        await model.refresh()
+        // 無料では、3 日目以降の提案は画面に出さない
+        let later = try #require(model.plans[2].top)
+        #expect(!model.isShown(later.id))
+        #expect(model.isShown(try #require(model.plans[0].top).id))
+        model.isPro = true
+        #expect(model.isShown(later.id))
+    }
+}
