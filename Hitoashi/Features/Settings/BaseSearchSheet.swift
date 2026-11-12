@@ -17,13 +17,24 @@ struct BaseSearchSheet: View {
     @State private var results: [GeocodeHit] = []
     @State private var isLocating = false
     @State private var locationFailed = false
+    /// 「現在地を使う」を押した回数（0 は、まだ押していない）。画面を閉じたら、待っている取得を止める
+    @State private var locateRequest = 0
+    /// すでに場所を選んだ（あとから届いた現在地で上書きしない）
+    @State private var hasChosen = false
 
     var body: some View {
         NavigationStack {
             List {
+                #if os(macOS)
+                // Mac のシートにはツールバーの検索欄が出ないので、欄を中に置く
+                Section {
+                    TextField("住所・駅名・建物の名前", text: $query)
+                        .textFieldStyle(.roundedBorder)
+                }
+                #endif
                 Section {
                     Button {
-                        Task { await useCurrentLocation() }
+                        locateRequest += 1
                     } label: {
                         HStack {
                             Label("現在地を使う", systemImage: "location")
@@ -70,9 +81,16 @@ struct BaseSearchSheet: View {
                     }
                 }
             }
+            #if !os(macOS)
             .searchable(text: $query, prompt: Text("住所・駅名・建物の名前"))
+            #endif
             .task(id: query) {
                 await search()
+            }
+            .task(id: locateRequest) {
+                if locateRequest > 0 {
+                    await useCurrentLocation()
+                }
             }
             .navigationTitle(kind == .home ? Text("自宅") : Text("職場"))
             #if os(iOS)
@@ -109,7 +127,12 @@ struct BaseSearchSheet: View {
     private func useCurrentLocation() async {
         isLocating = true
         defer { isLocating = false }
-        guard let hit = await model.currentPlace() else {
+        let hit = await model.currentPlace()
+        // 待っているあいだに画面を閉じた・ほかの場所を選んだときは、登録しない
+        guard !Task.isCancelled, !hasChosen else {
+            return
+        }
+        guard let hit else {
             locationFailed = true
             return
         }
@@ -117,6 +140,7 @@ struct BaseSearchSheet: View {
     }
 
     private func choose(_ hit: GeocodeHit) {
+        hasChosen = true
         model.setBase(kind, name: hit.name, coordinate: hit.coordinate)
         dismiss()
     }
