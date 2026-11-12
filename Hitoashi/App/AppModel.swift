@@ -59,7 +59,15 @@ final class AppModel {
     /// 開いてほしいひと足（通知や撮影モードから）。きょうの画面が受け取ったら nil に戻す
     var routeToOpen: String?
     /// この端末で通知を出すか（「この時刻に知らせる」を押した端末だけ）
-    private(set) var noticesEnabled: Bool
+    var noticesEnabled: Bool
+    /// 通知の許可を求めたが、許可されなかった
+    var noticesDenied = false
+    /// カレンダーの許可や対象が変わったら画面を更新するための印
+    var calendarRevision = 0
+    /// 「見本を表示」を切り替えたとき（アプリの環境を作り直す）
+    var onToggleDemo: ((Bool) -> Void)?
+    let finder = PlaceFinder()
+    let locator = LocationFetcher()
 
     init(environment: AppEnvironment) {
         self.environment = environment
@@ -67,11 +75,17 @@ final class AppModel {
         bases = environment.settings.bases
         hasOnboarded = environment.settings.hasOnboarded
         noticesEnabled = environment.settings.noticesEnabled
+        isPro = environment.store?.isPro ?? false
+        environment.store?.onChange = { [weak self] isPro in
+            self?.isPro = isPro
+        }
     }
 
     var now: Date { environment.clock() }
     var calendar: Calendar { environment.calendar }
     var isDemo: Bool { snapshot.isDemo }
+    /// 天気を取れなかった地点がある（実データのとき）
+    var weatherFailed: Bool { snapshot.weatherFailed }
 
     /// 判定や提案を文にする部品（言語と単位は端末の設定に従う）
     var book: Phrasebook {
@@ -99,22 +113,52 @@ final class AppModel {
         }
         isRefreshing = true
         defer { isRefreshing = false }
-        let request = WorldRequest(bases: bases, preferences: preferences, now: now, calendar: calendar, isPro: isPro)
-        snapshot = await environment.provider.snapshot(for: request)
+        snapshot = await environment.provider.snapshot(for: worldRequest)
         refreshedAt = now
         replan()
+        await scheduleNotices()
+    }
+
+    /// 更新の条件（いまの設定と時刻）
+    var worldRequest: WorldRequest {
+        WorldRequest(bases: bases, preferences: preferences, now: now, calendar: calendar, isPro: isPro)
+    }
+
+    /// 先の日を開いたときに、その日の場所のスポットを探す（実データのときだけ。近い日のぶんは更新のときに探してある）
+    func loadSpotsForSelectedDay() async {
+        guard let live = environment.provider as? LiveWorldProvider, selectedDay >= 3 else {
+            return
+        }
+        var changed = false
+        for place in WeekPlanner.requiredSpotPlaces(plannerInput, dayLimit: selectedDay + 1) {
+            let cell = PlaceCell.fine(place.coordinate)
+            if snapshot.spots[cell] == nil {
+                snapshot.spots[cell] = await live.spots(around: place.coordinate, request: worldRequest)
+                changed = true
+            }
+        }
+        if changed {
+            replan()
+        }
     }
 
     /// いまある材料で、計画を作り直す
     func replan() {
-        let done = environment.logs.all().filter { $0.outcome == .done }
+        plans = WeekPlanner.plans(plannerInput)
+        if selectedDay >= plans.count {
+            selectedDay = 0
+        }
+    }
+
+    /// 計画を作る入力
+    var plannerInput: WeekPlanner.Input {
         var doneCounts: [SlotKind: Int] = [:]
-        for log in done {
+        for log in environment.logs.all() where log.outcome == .done {
             if let kind = SlotKind(rawValue: log.slotKindRaw) {
                 doneCounts[kind, default: 0] += 1
             }
         }
-        let input = WeekPlanner.Input(
+        return WeekPlanner.Input(
             events: snapshot.events,
             places: snapshot.places,
             bases: bases,
@@ -127,10 +171,6 @@ final class AppModel {
             rejectedSpotIDs: environment.settings.rejectedSpotIDs,
             doneCounts: doneCounts
         )
-        plans = WeekPlanner.plans(input)
-        if selectedDay >= plans.count {
-            selectedDay = 0
-        }
     }
 
     // MARK: - 計画の読み出し
@@ -198,12 +238,6 @@ final class AppModel {
         replan()
     }
 
-    /// 「この時刻に知らせる」: この端末で通知を出すようにする
-    func enableNotices() async {
-        noticesEnabled = true
-        environment.settings.noticesEnabled = true
-    }
-
     // MARK: - 記録
 
     var logs: [StepLog] {
@@ -235,14 +269,17 @@ final class AppModel {
         }
     }
 
-    /// 保存したものをすべて消す
+    /// 保存したものをすべて消す（設定・記録・予報やスポットの保存・予約した通知）
     func eraseAll() {
         environment.settings.eraseAll()
         environment.logs.eraseAll()
+        (environment.provider as? LiveWorldProvider)?.eraseAll()
+        environment.notices?.cancelAll()
         preferences = Preferences()
         bases = []
+        noticesEnabled = false
         chosenPlans = [:]
         logRevision += 1
-        replan()
+        Task { await refresh() }
     }
 }

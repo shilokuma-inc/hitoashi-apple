@@ -9,18 +9,33 @@ import SwiftUI
 
 @main
 struct Hitoashi: App {
-    @State private var model = AppModel(environment: AppLaunch.environment())
+    @State private var session = AppSession()
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some Scene {
         WindowGroup {
             RootView()
-                .environment(model)
-                .task {
-                    await model.refresh()
-                    AppLaunch.applyScene(to: model)
+                .environment(session.model)
+                // 環境（実データ / 見本）を切り替えたら、画面を作り直す
+                .id(ObjectIdentifier(session.model))
+                .task(id: ObjectIdentifier(session.model)) {
+                    #if DEBUG
+                    await WeatherProbe.runIfRequested()
+                    #endif
+                    #if DEBUG && targetEnvironment(simulator)
+                    await DebugCalendarSeeder.seedIfRequested()
+                    #endif
+                    await session.model.refresh()
+                    AppLaunch.applyScene(to: session.model)
                     #if DEBUG && os(macOS)
                     await WindowSnapshot.exportIfRequested()
                     #endif
+                }
+                .onChange(of: scenePhase) { _, phase in
+                    // 前面に戻ったら、必ず判定し直す（仕様書 §5-1）
+                    if phase == .active {
+                        Task { await session.model.refresh() }
+                    }
                 }
         }
         #if os(macOS)
@@ -29,17 +44,8 @@ struct Hitoashi: App {
     }
 }
 
-/// 起動のしかた。撮影モード（ScreenshotDemo）では、見本のデータで目的の画面を開く
+/// 撮影モード（ScreenshotDemo）で開く画面に合わせて、状態を整える
 enum AppLaunch {
-    static func environment() -> AppEnvironment {
-        let environment = AppEnvironment.demo(alertToday: ScreenshotDemo.scene == .restDay)
-        if ScreenshotDemo.isEnabled, ScreenshotDemo.scene != .onboarding {
-            environment.settings.hasOnboarded = true
-        }
-        return environment
-    }
-
-    /// 撮影モードで開く画面に合わせて、状態を整える
     static func applyScene(to model: AppModel) {
         guard let scene = ScreenshotDemo.scene else {
             return
