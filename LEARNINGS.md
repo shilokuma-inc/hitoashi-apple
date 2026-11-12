@@ -9,6 +9,8 @@
 - WeatherKit の entitlement を付けたまま、Simulator 向け（iOS / visionOS）はプロビジョニングなしでビルドできる。Mac 版は実際の署名が要るので、手元では `-allowProvisioningUpdates` を付ける（Xcode にサインイン済みなら App ID とプロファイルが自動で作られる）。CI は `CODE_SIGNING_ALLOWED=NO` でコンパイルだけ確かめる（2026-11-12）
 - WeatherKit は、App ID の Capabilities に付いているだけでは動かない。自動署名が付けるのは Capabilities の側だけで、Certificates, Identifiers & Profiles → Identifiers → 対象の App ID → **App Services** タブの WeatherKit は手で有効にする。無いと、署名した Mac 版でも Simulator でも `WDSJWTAuthenticatorServiceListener.Errors Code=2`（`WeatherKit App Service is not enabled for this App ID`）で予報を取れない。チェックを入れただけでは効かず、右上の Save → 確認のダイアログの Confirm まで押す。保存できていれば、数分で通る。HTTP 401 が 30 分たっても続くなら、反映待ちより保存漏れを疑う（実際に、保存し直した直後に通った）。こちら側の切り分けは、`codesign -d --entitlements -` で Team ID と WeatherKit の entitlement を見る（2026-11-12）
 - 日本語を基本の言語にするには、pbxproj の `developmentRegion` を `ja`（`knownRegions` に `ja`）にする。`en` のままだと、端末が日本語でも `Locale.current` が英語になり、日付や曜日が英語で出る（2026-11-12）
+- 配信のワークフロー（`_archive.yml`。テンプレート由来）は、署名なし（`CODE_SIGNING_ALLOWED=NO`）で Archive して、Export のときに署名する。この流れだと、`CODE_SIGN_ENTITLEMENTS` のファイルがアプリに入らず、配信ビルドには基本の entitlement（`application-identifier` など）しか付かない。ビルドもアップロードも成功するのに、WeatherKit だけ実機で動かないビルドになる（1.0.0 (1) がそうだった）。Archive のあとに `codesign --force --sign - --entitlements <ファイル> <アプリ>` でアドホック署名しておくと、Export が entitlement を引き継ぐ。書き出した IPA は `codesign -d --entitlements - --xml Payload/*.app` で確かめられる（ワークフローにも、欠けていたら落とす確認を入れた）（2026-11-12）
+- GitHub Actions の `run:` の中で、変数のすぐ後ろに全角の文字を書くと（`$entitlements）`）、変数名の続きとして読まれて出力が化ける。`${entitlements}` と波かっこで囲む（2026-11-12）
 
 ## 起動・テスト・画面の確認
 
