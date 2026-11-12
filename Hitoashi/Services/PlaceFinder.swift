@@ -193,14 +193,15 @@ struct PlaceFinder {
         return Spot(id: identifier, name: name, coordinate: coordinate, category: category)
     }
 
-    /// 半径の外と重複を外し、近い順に 12 件まで
-    private static func tidy(_ spots: [Spot], origin: Coordinate, radius: CLLocationDistance) -> [Spot] {
+    /// 半径の外を外し、近い順に並べて、同じ名前は近いほうだけを残す。
+    /// 件数では切らない（升目の中心から探した結果を、升目の端の地点でも使うので、中心に近い順で切ると端の近くの場所を落とす。
+    /// MapKit が 1 回に返すのは数十件まで）
+    static func tidy(_ spots: [Spot], origin: Coordinate, radius: CLLocationDistance) -> [Spot] {
         var seen: Set<String> = []
         return spots
-            .filter { origin.distance(to: $0.coordinate) <= radius && seen.insert($0.name).inserted }
+            .filter { origin.distance(to: $0.coordinate) <= radius }
             .sorted { origin.distance(to: $0.coordinate) < origin.distance(to: $1.coordinate) }
-            .prefix(12)
-            .map(\.self)
+            .filter { seen.insert($0.name).inserted }
     }
 
     private static func hit(_ item: MKMapItem, fallbackName: String) -> GeocodeHit {
