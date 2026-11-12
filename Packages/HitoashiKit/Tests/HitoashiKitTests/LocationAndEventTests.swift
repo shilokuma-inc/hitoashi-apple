@@ -99,6 +99,22 @@ struct EventNormalizerTests {
     }
 }
 
+struct PlaceCellTests {
+    @Test func fineCellsKeepTheirOwnSizeAndCenter() throws {
+        let shibuya = Coordinate(latitude: 35.6620, longitude: 139.7005)
+        let coarse = PlaceCell(shibuya)
+        let fine = PlaceCell.fine(shibuya)
+        // 中心は、もとの座標から升目の半分の対角より近い（細かい升目でも、正しい緯度・経度に戻る）
+        #expect(coarse.center.distance(to: shibuya) < 1600)
+        #expect(fine.center.distance(to: shibuya) < 400)
+        // 大きさの違う升目は、番号が同じでも別のもの
+        #expect(coarse != fine)
+        // 大きさを持たない古い保存は、天気の升目として読む
+        let old = try JSONDecoder().decode(PlaceCell.self, from: Data(#"{"latIndex":1783,"lonIndex":6985}"#.utf8))
+        #expect(old == coarse)
+    }
+}
+
 struct PlaceFallbackTests {
     @Test func weekdayUsesWorkAndWeekendUsesHome() {
         let bases = DemoData.world().bases
