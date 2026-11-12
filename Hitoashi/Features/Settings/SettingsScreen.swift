@@ -48,20 +48,35 @@ struct SettingsScreen: View {
                 }
 
                 Section {
-                    ForEach(model.bases) { base in
-                        LabeledContent(baseKindName(base.kind), value: base.name)
+                    BaseRows()
+                } header: {
+                    Text("拠点")
+                } footer: {
+                    Text("場所の入っていない予定は、拠点にいるものとして提案します。平日は職場、休日は自宅を使います。")
+                }
+
+                Section("予定") {
+                    if model.hasCalendarAccess {
+                        NavigationLink("対象のカレンダー") {
+                            CalendarsForm()
+                        }
+                    } else if model.canAskCalendar {
+                        Button("カレンダーを読ませる") {
+                            Task { await model.requestCalendarAccess() }
+                        }
+                    } else {
+                        Text("カレンダーが許可されていません。端末の設定アプリで「フルアクセス」にすると、予定を読めます。")
+                            .type(.caption)
+                            .foregroundStyle(Palette.ink2)
                     }
                     NavigationLink("提案しない題名") {
                         ExcludedWordsForm()
                     }
                     .badge(model.preferences.excludedTitleWords.count)
-                } header: {
-                    Text("拠点と予定")
-                } footer: {
-                    Text("場所の入っていない予定は、拠点にいるものとして提案します。平日は職場、休日は自宅を使います。")
                 }
 
-                Section("お知らせ") {
+                Section {
+                    Toggle("この端末でお知らせする", isOn: noticeBinding)
                     Toggle("当日のお知らせ", isOn: $model.preferences.dayNoticeEnabled)
                     Picker("前の晩のお知らせ", selection: $model.preferences.eveningNotice) {
                         Text("準備が要るときだけ").tag(EveningNoticePolicy.whenPreparationNeeded)
@@ -69,14 +84,24 @@ struct SettingsScreen: View {
                         Text("オフ").tag(EveningNoticePolicy.never)
                     }
                     Toggle("通知に予定の題名を入れる", isOn: $model.preferences.includesEventTitleInNotice)
+                } header: {
+                    Text("お知らせ")
+                } footer: {
+                    if model.noticesDenied {
+                        Text("通知が許可されていません。端末の設定アプリで、ひとあしの通知をオンにしてください。")
+                    } else {
+                        Text("天気の良い日を選んで、週の回数だけお知らせします。予報が古いときは、天気を書かずにお知らせします。")
+                    }
                 }
 
                 Section {
-                    Button(model.isPro ? "ひとあし Pro を利用中" : "ひとあし Pro") {
-                        model.showsPaywall = true
-                    }
-                    .disabled(model.isPro)
+                    Toggle("見本を表示", isOn: demoBinding)
+                        .accessibilityIdentifier("settings.demo")
+                } footer: {
+                    Text("見本の予定と天気で、画面を試せます。実際の予定や記録は変わりません。")
                 }
+
+                ProSection()
 
                 AboutSection()
             }
@@ -97,15 +122,62 @@ struct SettingsScreen: View {
         }
     }
 
-    private func baseKindName(_ kind: BaseKind) -> String {
-        switch kind {
-        case .home:
-            String(localized: "自宅")
-        case .work:
-            String(localized: "職場")
-        case .extra:
-            String(localized: "そのほか")
+    private var noticeBinding: Binding<Bool> {
+        Binding {
+            model.noticesEnabled
+        } set: { isOn in
+            if isOn {
+                Task { await model.enableNotices() }
+            } else {
+                model.disableNotices()
+            }
         }
+    }
+
+    private var demoBinding: Binding<Bool> {
+        Binding {
+            model.isDemo
+        } set: { isOn in
+            model.onToggleDemo?(isOn)
+        }
+    }
+}
+
+/// ひとあし Pro（購入・復元・サブスクの管理）
+private struct ProSection: View {
+    @Environment(AppModel.self) private var model
+    @Environment(\.openURL) private var openURL
+    @State private var showsManage = false
+
+    var body: some View {
+        Section("ひとあし Pro") {
+            if model.isPro {
+                Text("利用中です")
+                    .foregroundStyle(Palette.ink2)
+                Button("サブスクリプションを管理") {
+                    #if os(macOS)
+                    if let url = URL(string: "https://apps.apple.com/account/subscriptions") {
+                        openURL(url)
+                    }
+                    #else
+                    showsManage = true
+                    #endif
+                }
+            } else {
+                Button("Pro でできること") {
+                    model.showsPaywall = true
+                }
+                .accessibilityIdentifier("settings.pro")
+            }
+            if let store = model.environment.store, !model.isDemo {
+                Button("購入を復元") {
+                    Task { await store.restore() }
+                }
+            }
+        }
+        #if !os(macOS)
+        .manageSubscriptionsSheet(isPresented: $showsManage)
+        #endif
     }
 }
 

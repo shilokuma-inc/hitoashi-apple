@@ -28,6 +28,9 @@ struct TodayTimeline: View {
                     if let rest = plan.restDay {
                         RestDayBlock(rest: rest)
                     }
+                    if !model.isDemo {
+                        SetupHints(plan: plan)
+                    }
                     rows(for: plan)
                     if plan.hiddenCount > 0 {
                         MoreStepsRow(count: plan.hiddenCount)
@@ -47,6 +50,9 @@ struct TodayTimeline: View {
         .background(Palette.ground)
         .refreshable {
             await model.refresh()
+        }
+        .task(id: model.selectedDay) {
+            await model.loadSpotsForSelectedDay()
         }
     }
 
@@ -164,9 +170,10 @@ struct NotifyRow: View {
         Button {
             Task { await model.enableNotices() }
         } label: {
-            Label("この時刻に知らせる", systemImage: "bell")
+            Label(model.noticesDenied ? "通知が許可されていません（設定アプリで変えられます）" : "この時刻に知らせる", systemImage: "bell")
                 .type(.subStrong)
                 .foregroundStyle(Palette.ink)
+                .multilineTextAlignment(.leading)
                 .ruledRow()
         }
         .buttonStyle(.plain)
