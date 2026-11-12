@@ -9,7 +9,7 @@ import SwiftUI
 
 @main
 struct Hitoashi: App {
-    @State private var session = AppSession()
+    @State private var session = AppSession.shared
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some Scene {
@@ -35,11 +35,18 @@ struct Hitoashi: App {
                     // 前面に戻ったら、必ず判定し直す（仕様書 §5-1）
                     if phase == .active {
                         Task { await session.model.refresh() }
+                    } else if phase == .background {
+                        BackgroundRefresh.schedule()
                     }
                 }
         }
         #if os(macOS)
         .defaultSize(width: 1120, height: 760)
+        #else
+        // バックグラウンド更新。走れば予報と通知が新しくなる（走る頻度は OS しだいで、保証は無い。仕様書 §5-1）
+        .backgroundTask(.appRefresh(BackgroundRefresh.identifier)) {
+            await BackgroundRefresh.run()
+        }
         #endif
     }
 }

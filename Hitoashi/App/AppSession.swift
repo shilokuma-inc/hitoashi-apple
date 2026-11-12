@@ -12,12 +12,15 @@ import Observation
 
 @Observable
 final class AppSession {
+    /// アプリに 1 つだけ（バックグラウンド更新からも同じものを使う）
+    static let shared = AppSession()
+
     private(set) var model: AppModel
     private let store = Store()
     private let notices = NoticeScheduler()
     private var calendarObserver: (any NSObjectProtocol)?
 
-    init() {
+    private init() {
         model = AppModel(environment: Self.makeEnvironment(store: store, notices: notices))
         notices.activate()
         connect()
@@ -25,7 +28,8 @@ final class AppSession {
             store.start()
         }
         // カレンダーが変わったら、取り込み直す
-        calendarObserver = NotificationCenter.default.addObserver(forName: .EKEventStoreChanged, object: nil, queue: .main) { [weak self] _ in
+        let center = NotificationCenter.default
+        calendarObserver = center.addObserver(forName: .EKEventStoreChanged, object: nil, queue: .main) { [weak self] _ in
             Task { @MainActor in
                 await self?.model.refresh()
             }
