@@ -241,7 +241,7 @@ struct PlanBuilder {
         if preferences.gymEnabled, allowsGear(minimumSlotMinutes: 75) {
             let gyms = usable(spots.gyms)
             let minutes = max(Activity.gym.minimumMinutes, target)
-            if let gym = gyms.first(where: { minutes + origin.walkingMinutes(to: $0.coordinate) * 2 <= budget }) {
+            if let gym = gyms.first(where: { minutes + origin.walkingMinutes(to: $0.coordinate) * 2 <= slot.usableMinutes }) {
                 return Choice(plan: plan(.gym, minutes: minutes, spot: gym, route: .roundTrip), others: others(gyms, except: gym))
             }
         }
@@ -249,8 +249,8 @@ struct PlanBuilder {
             let covered = usable(spots.covered).filter { origin.walkingMinutes(to: $0.coordinate) <= maxWalkMinutes }
             if let place = covered.first {
                 let walk = origin.walkingMinutes(to: place.coordinate)
-                let minutes = max(Activity.coveredWalk.minimumMinutes, min(target, (budget - walk * 2) / 5 * 5))
-                if minutes + walk * 2 <= budget {
+                let minutes = max(Activity.coveredWalk.minimumMinutes, min(target, (slot.usableMinutes - walk * 2) / 5 * 5))
+                if minutes + walk * 2 <= slot.usableMinutes {
                     return Choice(
                         plan: plan(.coveredWalk, minutes: minutes, spot: place, route: .roundTrip),
                         others: others(covered, except: place)

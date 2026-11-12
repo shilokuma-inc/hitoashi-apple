@@ -19,6 +19,8 @@ final class HitoashiUITestsLaunchTests: XCTestCase {
     @MainActor
     func testLaunch() throws {
         let app = XCUIApplication()
+        // 見本のデータで「きょう」を開く
+        app.launchArguments = ["-screenshot-demo", "YES", "-screenshot-scene", "home"]
         app.launch()
 
         // 起動直後のスクリーンショットをテスト結果に添付する

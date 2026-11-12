@@ -1,0 +1,12 @@
+{
+  "images": [
+    {
+      "idiom": "universal",
+      "filename": "path.jpg"
+    }
+  ],
+  "info": {
+    "author": "xcode",
+    "version": 1
+  }
+}

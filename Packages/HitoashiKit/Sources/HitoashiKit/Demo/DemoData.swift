@@ -67,8 +67,8 @@ public enum DemoData {
             now: now,
             calendar: calendar,
             bases: [
-                BasePlace(id: "home", kind: .home, name: "自宅", coordinate: home),
-                BasePlace(id: "work", kind: .work, name: "職場", coordinate: work)
+                BasePlace(id: "home", kind: .home, name: "世田谷区 代沢", coordinate: home),
+                BasePlace(id: "work", kind: .work, name: "千代田区 丸の内", coordinate: work)
             ],
             events: events,
             places: places,
