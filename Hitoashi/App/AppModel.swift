@@ -270,9 +270,14 @@ final class AppModel {
     }
 
     func suggestion(id: String) -> Suggestion? {
+        planned(id: id).map(resolved)
+    }
+
+    /// 計画が出したままの提案（利用者が選び直す前のもの）
+    private func planned(id: String) -> Suggestion? {
         for plan in plans {
             if let found = plan.candidates.first(where: { $0.id == id }) {
-                return resolved(found)
+                return found
             }
         }
         return nil
@@ -296,8 +301,15 @@ final class AppModel {
 
     /// ほかの場所を選ぶ（同じ動き方のまま、場所だけ変える）
     func choose(spot: Spot, for suggestion: Suggestion) {
-        let origin = suggestion.slot.place.coordinate
-        var plan = suggestion.plan
+        // 選び直す前の提案を土台にする（遠い場所を選んで延びた長さを、次の選び直しに引きずらない）
+        let base = planned(id: suggestion.id) ?? suggestion
+        if base.plan.spot?.id == spot.id {
+            // もとの場所に戻すときは、もとの提案そのもの（長さも）に戻す
+            chosenPlans[suggestion.id] = nil
+            return
+        }
+        let origin = base.slot.place.coordinate
+        var plan = base.plan
         plan.spot = spot
         plan.walkMinutesToSpot = origin.walkingMinutes(to: spot.coordinate)
         plan.distanceMeters = origin.distance(to: spot.coordinate)

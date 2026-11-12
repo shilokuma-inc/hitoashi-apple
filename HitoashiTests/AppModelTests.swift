@@ -244,6 +244,12 @@ struct ChoiceTests {
         #expect(!resolved.otherSpots.contains { $0.id == other.id })
         #expect(resolved.otherSpots.first?.id == original.id)
         #expect(resolved.otherSpots.count == top.otherSpots.count)
+
+        // もとの場所に戻すと、長さも含めて、もとの提案に戻る（遠い場所で延びた長さを引きずらない）
+        model.choose(spot: original, for: resolved)
+        let restored = try #require(model.suggestion(id: top.id))
+        #expect(restored.plan == top.plan)
+        #expect(restored.otherSpots == top.otherSpots)
     }
 
     @Test
