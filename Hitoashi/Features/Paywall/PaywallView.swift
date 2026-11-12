@@ -83,6 +83,12 @@ struct PaywallView: View {
         .safeAreaInset(edge: .bottom, spacing: 0) {
             footer
         }
+        .task {
+            // 起動のときに商品を取れなかった（通信できなかった）場合は、開いたときに取り直す
+            if let store, store.yearly == nil || store.monthly == nil {
+                await store.load()
+            }
+        }
     }
 
     private var store: Store? { model.environment.store }
