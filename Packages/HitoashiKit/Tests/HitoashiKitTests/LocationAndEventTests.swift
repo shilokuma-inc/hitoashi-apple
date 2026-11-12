@@ -115,6 +115,28 @@ struct PlaceCellTests {
     }
 }
 
+struct NearbySpotsTests {
+    @Test func arrangesFromTheActualPlaceAndKeepsTheNearerOfSameNamedPlaces() {
+        // 升目の中心と、端の近くに、同じ名前の施設が 1 つずつある
+        let center = Coordinate(latitude: 35.6625, longitude: 139.7025)
+        let edge = Coordinate(latitude: 35.6650, longitude: 139.7049)
+        let spots = NearbySpots(
+            covered: [
+                Spot(id: "center-hall", name: "市民ホール", coordinate: center, category: .covered),
+                Spot(id: "center-mall", name: "モール", coordinate: center, category: .covered),
+                Spot(id: "edge-hall", name: "市民ホール", coordinate: edge, category: .covered)
+            ]
+        )
+        // 端の地点から使うときは、端の近くのほうを残して先頭にする
+        let fromEdge = spots.arranged(from: edge)
+        #expect(fromEdge.covered.map(\.id) == ["edge-hall", "center-mall"])
+        // 中心の地点から使うときは、中心のほう
+        let fromCenter = spots.arranged(from: center)
+        #expect(fromCenter.covered.first { $0.name == "市民ホール" }?.id == "center-hall")
+        #expect(fromCenter.covered.count == 2)
+    }
+}
+
 struct PlaceFallbackTests {
     @Test func weekdayUsesWorkAndWeekendUsesHome() {
         let bases = DemoData.world().bases

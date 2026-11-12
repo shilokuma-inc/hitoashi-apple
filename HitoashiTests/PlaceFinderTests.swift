@@ -43,17 +43,19 @@ struct PlaceFinderTests {
         }
         let edge = Coordinate(latitude: center.latitude + 0.003, longitude: center.longitude)
         spots.append(Spot(id: "edge", name: "端のそば", coordinate: edge, category: .park))
-        // 同じ名前で遠いほう（入口が 2 つある公園など）は、近いほうだけを残す
+        // 同じ名前でも、場所が違えば残す（升目の端の地点からは、こちらのほうが近い）
         spots.append(Spot(id: "near-0-far-gate", name: "中心のそば 0", coordinate: edge, category: .park))
+        // 同じ場所が、別の検索にも出た（同じ id）ものは 1 つにする
+        spots.append(Spot(id: "edge", name: "端のそば", coordinate: edge, category: .park))
         let far = Coordinate(latitude: center.latitude + 0.03, longitude: center.longitude)
         spots.append(Spot(id: "far", name: "遠く", coordinate: far, category: .park))
 
         let tidied = PlaceFinder.tidy(spots, origin: center, radius: 850)
 
-        // 範囲の中は 1 件も落とさない（同じ名前は近いほうだけ）。範囲の外は外す
-        #expect(tidied.count == 21)
-        #expect(tidied.contains { $0.id == "edge" })
-        #expect(!tidied.contains { $0.id == "near-0-far-gate" })
+        // 範囲の中は 1 件も落とさない（同じ id の重なりだけまとめる）。範囲の外は外す
+        #expect(tidied.count == 22)
+        #expect(tidied.filter { $0.id == "edge" }.count == 1)
+        #expect(tidied.contains { $0.id == "near-0-far-gate" })
         #expect(!tidied.contains { $0.id == "far" })
         #expect(tidied.first?.id == "near-0")
     }

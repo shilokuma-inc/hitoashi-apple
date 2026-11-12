@@ -17,8 +17,8 @@ final class LiveWorldProvider: WorldProviding {
     /// 予報。取得から 24 時間で必ず捨てる
     private let forecasts = JSONFileCache<PlaceForecast>(name: "forecasts", lifetime: 24 * 3600)
     /// スポット。7 日保存する
-    /// （名前の v2: 探し方を「升目の中心から・件数で切らない」に変えたので、前の探し方の結果を使い回さない）
-    private let spots = JSONFileCache<NearbySpots>(name: "spots-v2", lifetime: 7 * 24 * 3600)
+    /// （名前の v3: 探し方を「升目の中心から・件数で切らない・同じ名前でも場所が違えば残す」に変えたので、前の探し方の結果を使い回さない）
+    private let spots = JSONFileCache<NearbySpots>(name: "spots-v3", lifetime: 7 * 24 * 3600)
     /// 場所の文字列ごとの位置。90 日保存する（見つからなかった文字列も覚えて、調べ直さない）
     private let geocodes = JSONFileCache<GeocodeHit?>(name: "geocodes", lifetime: 90 * 24 * 3600)
 
