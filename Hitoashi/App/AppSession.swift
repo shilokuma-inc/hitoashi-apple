@@ -56,10 +56,18 @@ final class AppSession {
             self?.model.routeToOpen = suggestionID
         }
         notices.onSkip = { [weak self] suggestionID in
-            guard let model = self?.model, let suggestion = model.suggestion(id: suggestionID) else {
-                return
+            Task { @MainActor in
+                guard let model = self?.model else {
+                    return
+                }
+                // 通知のアクションで起こされた直後は、まだ計画が無い。材料を集めてから探す
+                if model.suggestion(id: suggestionID) == nil {
+                    await model.refresh()
+                }
+                if let suggestion = model.suggestion(id: suggestionID) {
+                    model.record(suggestion, outcome: .skipped)
+                }
             }
-            model.record(suggestion, outcome: .skipped)
         }
     }
 
