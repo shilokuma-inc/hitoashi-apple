@@ -141,6 +141,11 @@ final class LiveWorldProvider: WorldProviding {
         return places
     }
 
+    /// 場所の文字列ごとに覚えた位置を捨てる（拠点が変わったとき）
+    func forgetPlaces() {
+        geocodes.removeAll()
+    }
+
     /// 保存したもの（予報・スポット・場所）をすべて消す
     func eraseAll() {
         forecasts.removeAll()

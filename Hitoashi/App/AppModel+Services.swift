@@ -76,11 +76,17 @@ extension AppModel {
         updated.append(BasePlace(id: kind.rawValue, kind: kind, name: name, coordinate: coordinate))
         // 自宅 → 職場 の順に並べる
         bases = updated.sorted { ($0.kind == .home ? 0 : 1) < ($1.kind == .home ? 0 : 1) }
-        Task { await refresh() }
+        basesChanged()
     }
 
     func removeBase(_ kind: BaseKind) {
         bases = bases.filter { $0.kind != kind }
+        basesChanged()
+    }
+
+    /// 場所の文字列の検索は拠点の周辺を優先するので、拠点が変わったら、覚えた位置を捨てて調べ直す
+    private func basesChanged() {
+        (environment.provider as? LiveWorldProvider)?.forgetPlaces()
         Task { await refresh() }
     }
 
