@@ -103,8 +103,14 @@ final class AppModel {
     var now: Date { environment.clock() }
     var calendar: Calendar { environment.calendar }
     var isDemo: Bool { snapshot.isDemo }
-    /// 天気を取れなかった地点がある（実データのとき）
-    var weatherFailed: Bool { snapshot.weatherFailed }
+    /// その日の予定の場所か拠点に、天気を取れなかった地点があるか（実データのとき）
+    func weatherFailed(on plan: DayPlan) -> Bool {
+        guard !snapshot.failedCells.isEmpty else {
+            return false
+        }
+        let cells = plan.events.compactMap { $0.place?.cell } + bases.map { PlaceCell($0.coordinate) }
+        return cells.contains(where: snapshot.failedCells.contains)
+    }
 
     /// 判定や提案を文にする部品（言語と単位は端末の設定に従う）
     var book: Phrasebook {

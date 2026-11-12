@@ -242,8 +242,8 @@ struct SetupHints: View {
                     EmptyView()
                 }
             }
-            if model.weatherFailed {
-                hint("天気を取得できませんでした", detail: "通信の状態を確かめて、引っぱって更新してください。天気が無いあいだは、提案を出しません。") {
+            if model.weatherFailed(on: plan) {
+                hint("天気を取得できなかった場所があります", detail: "通信の状態を確かめて、引っぱって更新してください。天気が無い場所では、提案を出しません。") {
                     Button("もう一度試す") {
                         Task { await model.refresh() }
                     }

@@ -18,8 +18,8 @@ struct WorldSnapshot: Sendable {
     var spots: [PlaceCell: NearbySpots]
     /// 見本のデータか（天気の帰属表示を出さず、「見本のデータです」と出す）
     var isDemo: Bool
-    /// 天気を取れなかった地点がある
-    var weatherFailed = false
+    /// 天気を取れなかった地点
+    var failedCells: Set<PlaceCell> = []
 
     static let empty = WorldSnapshot(events: [], places: [:], forecasts: [:], spots: [:], isDemo: false)
 }

@@ -60,7 +60,7 @@ final class LiveWorldProvider: WorldProviding {
                 // 取れなかったら、古いまま使う（画面に取得の時刻を出す）
                 snapshot.forecasts[cell] = saved.value
             } else {
-                snapshot.weatherFailed = true
+                snapshot.failedCells.insert(cell)
                 #if DEBUG
                 // 確認用: 天気だけ見本にして、予定と場所は実データで流す（-debug-sample-weather YES）
                 if ProcessInfo.processInfo.arguments.contains("-debug-sample-weather") {
