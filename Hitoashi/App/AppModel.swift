@@ -27,11 +27,30 @@ final class AppModel {
     private(set) var snapshot: WorldSnapshot = .empty
     private(set) var refreshedAt: Date?
     private(set) var isRefreshing = false
+    /// 進行中の更新（あとから来た呼び出しは、これが終わるのを待つ）
+    @ObservationIgnored private var refreshTask: Task<Void, Never>?
+    /// 更新の途中で、もう一度の更新を頼まれた
+    @ObservationIgnored private var needsAnotherRefresh = false
 
     var preferences: Preferences {
         didSet {
             environment.settings.preferences = preferences
             replan()
+            guard preferences != oldValue else {
+                return
+            }
+            let spotsChanged = preferences.coveredWalkEnabled != oldValue.coveredWalkEnabled
+                || preferences.gymEnabled != oldValue.gymEnabled
+                || preferences.gymNames != oldValue.gymNames
+            Task {
+                if spotsChanged {
+                    // 探すスポットの種類が変わったら、探し直す（最後に通知も作り直す）
+                    await refresh()
+                } else {
+                    // お知らせの設定を変えたら、予約済みの通知をその場で作り直す
+                    await scheduleNotices()
+                }
+            }
         }
     }
 
@@ -106,16 +125,37 @@ final class AppModel {
 
     // MARK: - 更新
 
-    /// 材料を取り直して、計画を作り直す
+    /// 材料を取り直して、計画を作り直す。
+    /// 更新の途中で呼ばれたら、いまの更新のあとにもう一度回し、それが終わるまで待つ
+    /// （途中で変わった予定・拠点・カレンダーの選択を取りこぼさないため）
     func refresh() async {
-        guard !isRefreshing else {
+        if let refreshTask {
+            needsAnotherRefresh = true
+            await refreshTask.value
             return
         }
-        isRefreshing = true
-        defer { isRefreshing = false }
+        let task = Task {
+            isRefreshing = true
+            repeat {
+                needsAnotherRefresh = false
+                await refreshOnce()
+            } while needsAnotherRefresh
+            isRefreshing = false
+            // ここまで待ちを挟まないので、「もう一度」の印を見落とさない
+            refreshTask = nil
+        }
+        refreshTask = task
+        await task.value
+    }
+
+    private func refreshOnce() async {
+        // 期限の切れた購入に気づくため、権利も確かめ直す
+        await environment.store?.refresh()
         snapshot = await environment.provider.snapshot(for: worldRequest)
         refreshedAt = now
         replan()
+        // 先の日を開いたままの更新で、その日のスポットが消えないようにする
+        await loadSpotsForSelectedDay()
         await scheduleNotices()
     }
 
