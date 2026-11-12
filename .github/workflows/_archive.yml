@@ -121,7 +121,7 @@ jobs:
           app_path=$(/usr/libexec/PlistBuddy -c 'Print :ApplicationProperties:ApplicationPath' "$RUNNER_TEMP/build.xcarchive/Info.plist")
           app="$RUNNER_TEMP/build.xcarchive/Products/$app_path"
           codesign --force --sign - --entitlements "$entitlements" "$app"
-          echo "アプリに入れた entitlements（$entitlements）:"
+          echo "アプリに入れた entitlements (${entitlements}):"
           codesign -d --entitlements - --xml "$app" | plutil -p -
 
       - name: Create ExportOptions.plist and API private key
