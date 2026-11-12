@@ -17,6 +17,7 @@ final class SettingsStore {
         case hasOnboarded
         case showsDemo
         case noticesEnabled
+        case calendarIDs
     }
 
     private let defaults: UserDefaults
@@ -71,9 +72,21 @@ final class SettingsStore {
         set { defaults.set(newValue, forKey: Key.noticesEnabled.rawValue) }
     }
 
+    /// 対象のカレンダー。nil なら、既定でオンのカレンダー（自分で編集できるもの）
+    var calendarIDs: Set<String>? {
+        get { load(.calendarIDs) }
+        set {
+            if let newValue {
+                save(newValue, .calendarIDs)
+            } else {
+                defaults.removeObject(forKey: Key.calendarIDs.rawValue)
+            }
+        }
+    }
+
     /// 保存したものをすべて消す
     func eraseAll() {
-        for key in [Key.preferences, .bases, .ledger, .rejectedSpots, .hasOnboarded, .showsDemo, .noticesEnabled] {
+        for key in [Key.preferences, .bases, .ledger, .rejectedSpots, .hasOnboarded, .showsDemo, .noticesEnabled, .calendarIDs] {
             defaults.removeObject(forKey: key.rawValue)
         }
     }
