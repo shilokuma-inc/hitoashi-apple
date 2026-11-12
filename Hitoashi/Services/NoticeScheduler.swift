@@ -24,6 +24,8 @@ final class NoticeScheduler: NSObject, UNUserNotificationCenterDelegate {
     var onSkip: ((String) -> Void)?
 
     private var center: UNUserNotificationCenter { .current() }
+    /// 予約の作り直し・取り消しのたびに進める。途中で進んだら、古い予約の追加をやめる
+    private var generation = 0
 
     /// アプリの起動時に 1 回呼ぶ（通知の操作を受け取れるようにする）
     func activate() {
@@ -43,8 +45,13 @@ final class NoticeScheduler: NSObject, UNUserNotificationCenterDelegate {
         (try? await center.requestAuthorization(options: [.alert, .sound])) ?? false
     }
 
-    /// 予約済みの通知を消して、作り直す
-    func schedule(_ notices: [PlannedNotice], calendar: Calendar) async {
+    /// 予約済みの通知を消して、作り直す。すべて予約できたら true。
+    /// 途中で取り消された・作り直しが始まった・追加に失敗したときは false
+    @discardableResult
+    func schedule(_ notices: [PlannedNotice], calendar: Calendar) async -> Bool {
+        generation += 1
+        let current = generation
+        var failures = 0
         center.removeAllPendingNotificationRequests()
         for notice in notices {
             let content = UNMutableNotificationContent()
@@ -57,14 +64,25 @@ final class NoticeScheduler: NSObject, UNUserNotificationCenterDelegate {
             }
             let parts = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: notice.fireDate)
             let trigger = UNCalendarNotificationTrigger(dateMatching: parts, repeats: false)
-            try? await center.add(UNNotificationRequest(identifier: notice.id, content: content, trigger: trigger))
+            do {
+                try await center.add(UNNotificationRequest(identifier: notice.id, content: content, trigger: trigger))
+            } catch {
+                failures += 1
+            }
+            // 追加を待っているあいだに「お知らせ」を切った・作り直しが始まったら、残りは足さない
+            guard current == generation else {
+                return false
+            }
         }
         // 件数と種類だけを記録する（文面や予定の中身は書かない）
         let kinds = notices.map(\.kind.rawValue).joined(separator: ",")
-        Self.logger.info("scheduled \(notices.count, privacy: .public) [\(kinds, privacy: .public)]")
+        let added = notices.count - failures
+        Self.logger.info("scheduled \(added, privacy: .public)/\(notices.count, privacy: .public) [\(kinds, privacy: .public)]")
+        return failures == 0
     }
 
     func cancelAll() {
+        generation += 1
         center.removeAllPendingNotificationRequests()
     }
 

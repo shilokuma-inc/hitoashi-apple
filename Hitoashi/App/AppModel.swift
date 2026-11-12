@@ -322,6 +322,11 @@ final class AppModel {
     func record(_ suggestion: Suggestion, outcome: StepLog.Outcome) {
         environment.logs.record(suggestion, title: book.title(for: suggestion.plan), outcome: outcome)
         logRevision += 1
+        // 「やった」の数は順位に使うので、計画を作り直す。「やめておく」なら、その日の通知も取り消す
+        replan()
+        if outcome == .skipped {
+            Task { await scheduleNotices() }
+        }
     }
 
     func setOutcome(_ outcome: StepLog.Outcome, for log: StepLog) {

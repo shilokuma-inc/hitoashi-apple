@@ -149,7 +149,18 @@ extension AppModel {
                 phrasebook: book
             )
         )
-        environment.settings.ledger = output.ledger
-        await notices.schedule(output.notices, calendar: calendar)
+        // 「きょうはやめておく」とした日には、当日も前夜も知らせない
+        let skippedDays = Set(
+            environment.logs.all()
+                .filter { $0.outcome == .skipped }
+                .map { NotificationPlanner.dayKey($0.date, calendar: calendar) }
+        )
+        let wanted = output.notices.filter { notice in
+            !skippedDays.contains { notice.id.hasSuffix($0) }
+        }
+        // 予約に失敗したら、控え（知らせる日の確定）は進めない。次の更新でやり直す
+        if await notices.schedule(wanted, calendar: calendar) {
+            environment.settings.ledger = output.ledger
+        }
     }
 }
