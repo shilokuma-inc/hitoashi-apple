@@ -41,17 +41,18 @@ struct AppModelTests {
         while provider.calls == 0 {
             await Task.yield()
         }
-        // 1 回目が材料を集めている途中で、もう 2 回頼む（予定が変わった・拠点を変えた、など）
+        // 1 回目が材料を集めている途中で、もう一度頼む（予定が変わった・拠点を変えた、など）
         let second = Task { await model.refresh() }
-        let third = Task { await model.refresh() }
-        await Task.yield()
+        // 2 回目が「もう一度」の印を立てた（1 回目に合流した）のを確かめてから、門を開ける
+        while !model.needsAnotherRefresh {
+            await Task.yield()
+        }
         #expect(provider.calls == 1)
 
         provider.open()
         await first.value
         await second.value
-        await third.value
-        // 途中の 2 回は 1 回にまとめて、いまの更新のあとにやり直す
+        // 途中に来た更新は捨てずに、いまの更新のあとにやり直す
         #expect(provider.calls == 2)
         #expect(!model.isRefreshing)
     }
