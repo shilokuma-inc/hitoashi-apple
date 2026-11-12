@@ -98,7 +98,8 @@ extension AppModel {
 
     /// 現在地（許可は「使用中のみ」。拠点の登録のときだけ使う）
     func currentPlace() async -> GeocodeHit? {
-        guard let coordinate = await locator.current() else {
+        // 待っているあいだに画面を閉じたら、使わない位置で地名を調べに行かない
+        guard let coordinate = await locator.current(), !Task.isCancelled else {
             return nil
         }
         let name = await finder.placeName(at: coordinate) ?? String(localized: "現在地")

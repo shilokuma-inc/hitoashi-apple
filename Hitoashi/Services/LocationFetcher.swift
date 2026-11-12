@@ -11,7 +11,8 @@ import HitoashiKit
 
 final class LocationFetcher: NSObject, CLLocationManagerDelegate {
     private let manager = CLLocationManager()
-    private var continuation: CheckedContinuation<Coordinate?, Never>?
+    /// 結果を待っている呼び出し（同時に呼ばれたら、同じ結果を全員に返す）
+    private var waiters: [CheckedContinuation<Coordinate?, Never>] = []
 
     override init() {
         super.init()
@@ -25,8 +26,11 @@ final class LocationFetcher: NSObject, CLLocationManagerDelegate {
             return nil
         }
         return await withCheckedContinuation { continuation in
-            self.continuation?.resume(returning: nil)
-            self.continuation = continuation
+            waiters.append(continuation)
+            // すでに取得中なら、その結果を待つ
+            guard waiters.count == 1 else {
+                return
+            }
             if manager.authorizationStatus == .notDetermined {
                 manager.requestWhenInUseAuthorization()
             } else {
@@ -36,14 +40,17 @@ final class LocationFetcher: NSObject, CLLocationManagerDelegate {
     }
 
     private func finish(_ coordinate: Coordinate?) {
-        continuation?.resume(returning: coordinate)
-        continuation = nil
+        let waiting = waiters
+        waiters = []
+        for waiter in waiting {
+            waiter.resume(returning: coordinate)
+        }
     }
 
     nonisolated func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         let status = manager.authorizationStatus
         Task { @MainActor in
-            guard continuation != nil else {
+            guard !waiters.isEmpty else {
                 return
             }
             switch status {

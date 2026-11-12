@@ -121,7 +121,12 @@ struct BaseSearchSheet: View {
         guard !Task.isCancelled else {
             return
         }
-        results = await model.searchPlaces(text)
+        let found = await model.searchPlaces(text)
+        // 待っているあいだに入力が変わっていたら、古い言葉の結果で上書きしない
+        guard !Task.isCancelled, text == query.trimmingCharacters(in: .whitespaces) else {
+            return
+        }
+        results = found
     }
 
     private func useCurrentLocation() async {
