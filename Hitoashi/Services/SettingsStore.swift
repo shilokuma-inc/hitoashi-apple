@@ -20,17 +20,30 @@ final class SettingsStore {
     }
 
     private let defaults: UserDefaults
+    /// 使い捨ての保存先の名前（見本・テスト用。nil なら、ふつうの保存先）
+    private let ephemeralName: String?
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
+        ephemeralName = nil
     }
 
-    /// テストと撮影モード用の、空の保存先
+    private init(ephemeralName: String) {
+        defaults = UserDefaults(suiteName: ephemeralName) ?? .standard
+        self.ephemeralName = ephemeralName
+        defaults.removePersistentDomain(forName: ephemeralName)
+    }
+
+    deinit {
+        // 使い捨ての保存先は、使い終わったら消す
+        if let ephemeralName {
+            UserDefaults.standard.removePersistentDomain(forName: ephemeralName)
+        }
+    }
+
+    /// テストと見本用の、空の保存先。呼ぶたびに別の保存先を作る（見本の環境が複数あっても、互いの設定を消さない）
     static func ephemeral() -> SettingsStore {
-        let name = "jp.shilokuma.Hitoashi.ephemeral"
-        let defaults = UserDefaults(suiteName: name) ?? .standard
-        defaults.removePersistentDomain(forName: name)
-        return SettingsStore(defaults: defaults)
+        SettingsStore(ephemeralName: "jp.shilokuma.Hitoashi.ephemeral.\(UUID().uuidString)")
     }
 
     var preferences: Preferences {

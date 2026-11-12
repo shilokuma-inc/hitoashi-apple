@@ -215,3 +215,26 @@ struct ChoiceTests {
         #expect(model.isShown(later.id))
     }
 }
+
+@MainActor
+struct SettingsStoreTests {
+    @Test
+    func ephemeralStoresDoNotShareValues() {
+        let first = SettingsStore.ephemeral()
+        first.hasOnboarded = true
+        let second = SettingsStore.ephemeral()
+        // 2 つ目を作っても、1 つ目の設定は消えない
+        #expect(first.hasOnboarded)
+        #expect(!second.hasOnboarded)
+    }
+
+    @Test
+    func preferencesRoundTrip() {
+        let store = SettingsStore.ephemeral()
+        var preferences = Preferences()
+        preferences.weeklyTarget = .five
+        preferences.jogEnabled = true
+        store.preferences = preferences
+        #expect(store.preferences == preferences)
+    }
+}
