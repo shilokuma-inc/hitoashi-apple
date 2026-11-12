@@ -25,9 +25,7 @@ struct PaywallView: View {
     private let features: [(String, String)] = [
         ("空き時間", "すべてに提案"),
         ("先の日", "3日目から先も"),
-        ("今週", "歩きどき"),
-        ("ほかの画面", "ウィジェットとメニューバー"),
-        ("拠点", "3つ目から")
+        ("今週", "歩きどき")
     ]
 
     var body: some View {
