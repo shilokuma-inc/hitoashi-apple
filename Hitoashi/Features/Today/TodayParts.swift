@@ -237,7 +237,7 @@ struct SetupHints: View {
                         }
                     }
                 }
-            } else if !model.hasUpcomingEvents {
+            } else if model.refreshedAt != nil, !model.hasUpcomingEvents {
                 hint("この先 7 日の予定がありません", detail: "Google などのカレンダーは、端末の設定でアカウントを追加すると読めます。") {
                     EmptyView()
                 }
