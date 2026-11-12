@@ -79,8 +79,10 @@ struct PlaceFinder {
             return found ?? []
         }
         result.parks = take(await points(around: origin, radius: 1300, categories: [.park, .nationalPark, .beach], as: .park))
-        result.stations = take(await points(around: origin, radius: 1500, categories: [.publicTransport], as: .station))
-            .filter { $0.name.hasSuffix("駅") || $0.name.localizedCaseInsensitiveContains("station") }
+        // 駅は「駅」という言葉で探す。種類（公共交通）だけで探すと、件数の上限までバス停とタクシー乗り場で埋まり、
+        // 街なかでは駅が 1 件も返らない
+        let stations = take(await named(Self.stationQuery, around: origin, radius: 1500, as: .station, filter: [.publicTransport]))
+        result.stations = Self.tidy(stations.filter { Self.isStationName($0.name) }, origin: origin, radius: 1500)
         if preferences.coveredWalkEnabled {
             var covered = take(await points(around: origin, radius: 450, categories: [.museum, .library, .aquarium], as: .covered))
             for query in Self.coveredQueries {
@@ -104,8 +106,25 @@ struct PlaceFinder {
 
     // MARK: - 中身
 
+    private static var isJapanese: Bool {
+        Locale.current.language.languageCode?.identifier == "ja"
+    }
+
     private static var coveredQueries: [String] {
-        Locale.current.language.languageCode?.identifier == "ja" ? ["ショッピングモール", "地下街"] : ["shopping mall"]
+        isJapanese ? ["ショッピングモール", "地下街"] : ["shopping mall"]
+    }
+
+    private static var stationQuery: String {
+        isJapanese ? "駅" : "train station"
+    }
+
+    /// 駅の名前か。同じ検索で返るバス停・タクシー乗り場（「渋谷駅 - 3番のりば」「Shibuya Station Taxi」）を外す
+    static func isStationName(_ name: String) -> Bool {
+        let lower = name.lowercased()
+        guard lower.contains("駅") || lower.contains("station") else {
+            return false
+        }
+        return !["のりば", "乗り場", "乗場", "バス", "タクシー", "taxi", "bus"].contains(where: lower.contains)
     }
 
     /// MapKit の検索を走らせる。1 件も無いとき（`placemarkNotFound`）は空、通信の失敗などで調べられなかったときは nil
@@ -134,11 +153,20 @@ struct PlaceFinder {
         return Self.tidy(items.compactMap { Self.spot($0, category: category) }, origin: origin, radius: radius)
     }
 
-    /// 名前で探す。調べられなかったときは nil
-    private func named(_ query: String, around origin: Coordinate, radius: CLLocationDistance, as category: SpotCategory) async -> [Spot]? {
+    /// 名前で探す（`filter` があれば、その種類の中から）。調べられなかったときは nil
+    private func named(
+        _ query: String,
+        around origin: Coordinate,
+        radius: CLLocationDistance,
+        as category: SpotCategory,
+        filter: [MKPointOfInterestCategory]? = nil
+    ) async -> [Spot]? {
         let request = MKLocalSearch.Request()
         request.naturalLanguageQuery = query
         request.resultTypes = .pointOfInterest
+        if let filter {
+            request.pointOfInterestFilter = MKPointOfInterestFilter(including: filter)
+        }
         request.region = MKCoordinateRegion(center: origin.clLocation, latitudinalMeters: radius * 2, longitudinalMeters: radius * 2)
         guard let items = await Self.mapItems(MKLocalSearch(request: request)) else {
             return nil
