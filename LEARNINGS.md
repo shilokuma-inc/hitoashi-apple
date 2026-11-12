@@ -23,6 +23,8 @@
 - 子のボタンに付けた `accessibilityIdentifier` は、親のコンテナ（`ScrollView` や `VStack`）にも識別子を付けると上書きされ、UI テストから見つからなくなる。画面全体には識別子を付けない（2026-11-12）
 - MapKit の種類だけの検索（`MKLocalPointsOfInterestRequest` に `.publicTransport`）は 36 件ほどで打ち切られ、街なかではバス停とタクシー乗り場で埋まって駅が 1 件も返らない。駅は `MKLocalSearch.Request` の `naturalLanguageQuery = "駅"` に `pointOfInterestFilter`（`.publicTransport`）を足して探し、名前で「のりば・乗り場・タクシー・バス」を外す。保存の中身（Simulator のアプリのコンテナの `Library/Caches/spots.json`）を見ると、種類ごとの件数を確かめられる（2026-11-12）
 - MapKit の検索は、1 件も無いときに `MKError.placemarkNotFound` を投げる。`try?` でまとめて握りつぶすと、通信の失敗と区別できず、「見つからなかった」として保存してしまう。保存する前に分ける（2026-11-12）
+- CI の iOS Simulator では、`SKTestSession` が設定ファイルを保存できず（ログに `[SKTestSession] Error saving configuration file: Error Domain=SKInternalErrorDomain Code=3`）、`Product.products(for:)` が空で返る。原因は分かっていない（手元の Mac では通る）。`StoreTests` は `#if os(macOS)` で Mac だけにしてあり、CI では走らない。手元で Mac を宛先にして確かめる（2026-11-12）
+- `UNUserNotificationCenterDelegate` の async のメソッドは、`nonisolated` を付けずに書ける（型が MainActor なら、OS への完了の合図もメインから返る）。`nonisolated` にすると完了がメイン以外から返り、通知を押したときに落ちることがある。Simulator では `xcrun simctl push <udid> <bundle id> payload.json` で通知を届けて、押したときの動きを確かめられる（2026-11-12）
 
 ## デザイン・実装
 
