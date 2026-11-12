@@ -12,6 +12,7 @@ import SwiftUI
 struct OnboardingView: View {
     @Environment(AppModel.self) private var model
     @State private var step = Step.intro
+    @State private var isAdvancing = false
 
     enum Step: Int {
         case intro
@@ -56,6 +57,7 @@ struct OnboardingView: View {
                 Task { await advance() }
             }
             .buttonStyle(PrimaryButtonStyle())
+            .disabled(isAdvancing)
             .padding(.horizontal, 24)
             .padding(.vertical, 12)
             .accessibilityIdentifier("onboarding.next")
@@ -74,6 +76,12 @@ struct OnboardingView: View {
     }
 
     private func advance() async {
+        // 許可の確認や更新を待つあいだに二度押されても、ページを飛ばさない
+        guard !isAdvancing else {
+            return
+        }
+        isAdvancing = true
+        defer { isAdvancing = false }
         // カレンダーの説明のあとで、OS の確認を出す（見本のデータのときは出さない）
         if step == .calendar {
             await model.requestCalendarAccess()
