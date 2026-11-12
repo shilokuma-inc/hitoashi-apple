@@ -30,7 +30,9 @@ final class AppModel {
     /// 進行中の更新（あとから来た呼び出しは、これが終わるのを待つ）
     @ObservationIgnored private var refreshTask: Task<Void, Never>?
     /// 更新の途中で、もう一度の更新を頼まれた
-    @ObservationIgnored private var needsAnotherRefresh = false
+    @ObservationIgnored private(set) var needsAnotherRefresh = false
+    /// 材料を入れ替えた回数（途中で入れ替わったら、古い条件で探したスポットを捨てる）
+    @ObservationIgnored private var snapshotGeneration = 0
 
     var preferences: Preferences {
         didSet {
@@ -158,6 +160,7 @@ final class AppModel {
         // 期限の切れた購入に気づくため、権利も確かめ直す
         await environment.store?.refresh()
         snapshot = await environment.provider.snapshot(for: worldRequest)
+        snapshotGeneration += 1
         refreshedAt = now
         replan()
         // 先の日を開いたままの更新で、その日のスポットが消えないようにする
@@ -176,10 +179,16 @@ final class AppModel {
             return
         }
         var changed = false
+        let generation = snapshotGeneration
         for place in WeekPlanner.requiredSpotPlaces(plannerInput, dayLimit: selectedDay + 1) {
             let cell = PlaceCell.fine(place.coordinate)
             if snapshot.spots[cell] == nil {
-                snapshot.spots[cell] = await live.spots(around: place.coordinate, request: worldRequest)
+                let found = await live.spots(around: place.coordinate, request: worldRequest)
+                // 探しているあいだに材料が入れ替わった（設定を変えた・更新した）ら、古い条件の結果は書き戻さない
+                guard generation == snapshotGeneration else {
+                    return
+                }
+                snapshot.spots[cell] = found
                 changed = true
             }
         }
