@@ -39,7 +39,7 @@ xcodebuild build -project Hitoashi.xcodeproj -scheme Hitoashi -destination 'gene
 ```
 
 - Mac 版は App Sandbox を有効にしています（entitlements は `Configs/HitoashiMac.entitlements`）
-- WeatherKit を使うため、App ID に WeatherKit が必要です。Capabilities の側は自動署名で付きますが、**App Services** の側は Apple Developer のサイト（Identifiers → 対象の App ID → App Services）で手で有効にします。有効にするまで、予報を取れません（CI の Mac 版のビルドは署名なしでコンパイルだけ確かめます）
+- WeatherKit を使うため、App ID に WeatherKit が必要です。Capabilities の側は自動署名で付きますが、**App Services** の側は Apple Developer のサイト（Identifiers → 対象の App ID → App Services）で手で有効にします（チェックのあと、Save → Confirm まで）。有効にするまで、予報を取れません（トークンの要求が HTTP 401 になります）（CI の Mac 版のビルドは署名なしでコンパイルだけ確かめます）
 - 課金（StoreKit 2）は、手元では `HitoashiTests/Hitoashi.storekit` の設定ファイルで動きます（スキームの実行時の設定に入れてあります）。App Store Connect の商品はまだ作っていません
 
 確認用の起動引数（`-screenshot-demo` のほかは DEBUG のビルドだけ）:

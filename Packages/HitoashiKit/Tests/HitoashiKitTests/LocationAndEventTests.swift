@@ -115,6 +115,21 @@ struct PlaceCellTests {
     }
 }
 
+struct PlaceForecastTests {
+    @Test func readsOlderSavedForecastsWithoutTheSupportedFlag() throws {
+        // `alertsSupported` を足す前に保存した予報（対応しているものとして読む）
+        let json = #"{"cell":{"latIndex":1783,"lonIndex":6985},"fetchedAt":0,"hours":[],"days":[],"alerts":[],"alertsAvailable":false}"#
+        let forecast = try JSONDecoder().decode(PlaceForecast.self, from: Data(json.utf8))
+        #expect(!forecast.alertsAvailable)
+        #expect(forecast.alertsSupported)
+        // 書いて読み直しても、対応していない地域の印は残る
+        var unsupported = forecast
+        unsupported.alertsSupported = false
+        let reread = try JSONDecoder().decode(PlaceForecast.self, from: JSONEncoder().encode(unsupported))
+        #expect(!reread.alertsSupported)
+    }
+}
+
 struct NearbySpotsTests {
     @Test func arrangesFromTheActualPlaceAndKeepsTheNearerOfSameNamedPlaces() {
         // 升目の中心と、端の近くに、同じ名前の施設が 1 つずつある

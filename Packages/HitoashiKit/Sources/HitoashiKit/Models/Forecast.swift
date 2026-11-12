@@ -143,8 +143,10 @@ public struct PlaceForecast: Hashable, Sendable, Codable {
     public var hours: [HourForecast]
     public var days: [DayForecast]
     public var alerts: [WeatherAlertInfo]
-    /// この地域で警報の情報を取れるか
+    /// 警報の情報を取れたか（この取得のとき）
     public var alertsAvailable: Bool
+    /// この地域が、警報の情報に対応しているか。対応していて `alertsAvailable` が false なら、一時的に取れていない
+    public var alertsSupported: Bool
 
     public init(
         cell: PlaceCell,
@@ -152,7 +154,8 @@ public struct PlaceForecast: Hashable, Sendable, Codable {
         hours: [HourForecast],
         days: [DayForecast],
         alerts: [WeatherAlertInfo] = [],
-        alertsAvailable: Bool = true
+        alertsAvailable: Bool = true,
+        alertsSupported: Bool = true
     ) {
         self.cell = cell
         self.fetchedAt = fetchedAt
@@ -160,6 +163,19 @@ public struct PlaceForecast: Hashable, Sendable, Codable {
         self.days = days
         self.alerts = alerts
         self.alertsAvailable = alertsAvailable
+        self.alertsSupported = alertsSupported
+    }
+
+    /// `alertsSupported` を持たない古い保存も読めるようにする（対応しているものとして読む）
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        cell = try container.decode(PlaceCell.self, forKey: .cell)
+        fetchedAt = try container.decode(Date.self, forKey: .fetchedAt)
+        hours = try container.decode([HourForecast].self, forKey: .hours)
+        days = try container.decode([DayForecast].self, forKey: .days)
+        alerts = try container.decode([WeatherAlertInfo].self, forKey: .alerts)
+        alertsAvailable = try container.decode(Bool.self, forKey: .alertsAvailable)
+        alertsSupported = try container.decodeIfPresent(Bool.self, forKey: .alertsSupported) ?? true
     }
 
     /// 時間帯にかかる時間ごとの予報

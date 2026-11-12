@@ -7,7 +7,7 @@
 - テンプレート（template-app-ios）を 1 ターゲットのまま iOS / macOS / visionOS に対応させるには、pbxproj の `SDKROOT = auto` と `TARGETED_DEVICE_FAMILY = "1,2,7"`、xcconfig の `SUPPORTED_PLATFORMS` を足す。`SUPPORTED_PLATFORMS` は pbxproj に無いので xcconfig（プロジェクトの階層）で効く。`TARGETED_DEVICE_FAMILY` はターゲットの階層に書いてあるので、xcconfig では上書きできない（2026-11-12）
 - ローカルパッケージの `platforms` に `.iOS(.v26)` を書くには `swift-tools-version: 6.2` 以上が要る（6.0 だと `'v26' was introduced in PackageDescription 6.2`）（2026-11-12）
 - WeatherKit の entitlement を付けたまま、Simulator 向け（iOS / visionOS）はプロビジョニングなしでビルドできる。Mac 版は実際の署名が要るので、手元では `-allowProvisioningUpdates` を付ける（Xcode にサインイン済みなら App ID とプロファイルが自動で作られる）。CI は `CODE_SIGNING_ALLOWED=NO` でコンパイルだけ確かめる（2026-11-12）
-- WeatherKit は、App ID の Capabilities に付いているだけでは動かない。自動署名が付けるのは Capabilities の側だけで、Certificates, Identifiers & Profiles → Identifiers → 対象の App ID → **App Services** タブの WeatherKit は手で有効にする。無いと、署名した Mac 版でも Simulator でも `WDSJWTAuthenticatorServiceListener.Errors Code=2`（`WeatherKit App Service is not enabled for this App ID`）で予報を取れない。有効にしてから反映まで少し時間がかかることがある（2026-11-12）
+- WeatherKit は、App ID の Capabilities に付いているだけでは動かない。自動署名が付けるのは Capabilities の側だけで、Certificates, Identifiers & Profiles → Identifiers → 対象の App ID → **App Services** タブの WeatherKit は手で有効にする。無いと、署名した Mac 版でも Simulator でも `WDSJWTAuthenticatorServiceListener.Errors Code=2`（`WeatherKit App Service is not enabled for this App ID`）で予報を取れない。チェックを入れただけでは効かず、右上の Save → 確認のダイアログの Confirm まで押す。保存できていれば、数分で通る。HTTP 401 が 30 分たっても続くなら、反映待ちより保存漏れを疑う（実際に、保存し直した直後に通った）。こちら側の切り分けは、`codesign -d --entitlements -` で Team ID と WeatherKit の entitlement を見る（2026-11-12）
 - 日本語を基本の言語にするには、pbxproj の `developmentRegion` を `ja`（`knownRegions` に `ja`）にする。`en` のままだと、端末が日本語でも `Locale.current` が英語になり、日付や曜日が英語で出る（2026-11-12）
 
 ## 起動・テスト・画面の確認
@@ -25,6 +25,7 @@
 - MapKit の検索は、1 件も無いときに `MKError.placemarkNotFound` を投げる。`try?` でまとめて握りつぶすと、通信の失敗と区別できず、「見つからなかった」として保存してしまう。保存する前に分ける（2026-11-12）
 - CI の iOS Simulator では、`SKTestSession` が設定ファイルを保存できず（ログに `[SKTestSession] Error saving configuration file: Error Domain=SKInternalErrorDomain Code=3`）、`Product.products(for:)` が空で返る。原因は分かっていない（手元の Mac では通る）。`StoreTests` は `#if os(macOS)` で Mac だけにしてあり、CI では走らない。手元で Mac を宛先にして確かめる（2026-11-12）
 - `UNUserNotificationCenterDelegate` の async のメソッドは、`nonisolated` を付けずに書ける（型が MainActor なら、OS への完了の合図もメインから返る）。`nonisolated` にすると完了がメイン以外から返り、通知を押したときに落ちることがある。Simulator では `xcrun simctl push <udid> <bundle id> payload.json` で通知を届けて、押したときの動きを確かめられる（2026-11-12）
+- 東京の地点では、WeatherKit の `availability` が、警報は `temporarilyUnavailable`（対応しているが、いまは取れない）、分単位の降水は `available` で返った（2026-11-12 の夕方、Simulator と Mac）。`-weather-probe YES` が `WEATHER-PROBE availability alert=… minute=…` の行で出す。警報が取れない日は、休む日の判定は気温・風・降水のしきい値だけになる（2026-11-12）
 
 ## デザイン・実装
 

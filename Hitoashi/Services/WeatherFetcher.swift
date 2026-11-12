@@ -29,7 +29,8 @@ struct WeatherFetcher {
             hours: hourly.forecast.map(Self.hour),
             days: daily.forecast.map(Self.day),
             alerts: (alerts ?? []).map(Self.alert),
-            alertsAvailable: availability.alertAvailability == .available
+            alertsAvailable: availability.alertAvailability == .available,
+            alertsSupported: availability.alertAvailability != .unsupported
         )
     }
 

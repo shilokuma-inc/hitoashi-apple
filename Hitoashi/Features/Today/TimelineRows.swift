@@ -126,10 +126,14 @@ struct StepRowContent: View {
                 .type(.label)
                 .foregroundStyle(Palette.shu)
             HStack(alignment: .firstTextBaseline, spacing: 8) {
+                // 行き先の名前が長いと 2 行に収まらない（「Slit Park YURAKUCHO まで歩く」）。3 行まで折り返し、
+                // それでも入らないときは、末尾の「まで歩く」が残るように、まん中を省く
                 Text(book.title(for: suggestion.plan))
                     .type(.heading)
                     .foregroundStyle(Palette.ink)
-                    .lineLimit(2)
+                    .lineLimit(3)
+                    .truncationMode(.middle)
+                    .fixedSize(horizontal: false, vertical: true)
                 Spacer(minLength: 4)
                 Text(book.minutes(suggestion.plan.minutes))
                     .type(.heading)
