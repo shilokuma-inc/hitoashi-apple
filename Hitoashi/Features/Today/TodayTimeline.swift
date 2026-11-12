@@ -164,13 +164,27 @@ struct DayHeader: View {
 /// 「この時刻に知らせる」（通知が未許可のとき。押したときに許可を求める）
 struct NotifyRow: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.openURL) private var openURL
     var suggestion: Suggestion
+
+    /// 通知の設定を開く URL（許可されなかったあとは、押し直しても OS の確認は出ないので、ここへ案内する）
+    private static var settingsURL: URL? {
+        #if os(macOS)
+        URL(string: "x-apple.systempreferences:com.apple.Notifications-Settings.extension")
+        #else
+        URL(string: UIApplication.openNotificationSettingsURLString)
+        #endif
+    }
 
     var body: some View {
         Button {
-            Task { await model.enableNotices(for: suggestion.window.start) }
+            if model.noticesDenied, let url = Self.settingsURL {
+                openURL(url)
+            } else {
+                Task { await model.enableNotices(for: suggestion.window.start) }
+            }
         } label: {
-            Label(model.noticesDenied ? "通知が許可されていません（設定アプリで変えられます）" : "この時刻に知らせる", systemImage: "bell")
+            Label(model.noticesDenied ? "通知が許可されていません。設定を開く" : "この時刻に知らせる", systemImage: "bell")
                 .type(.subStrong)
                 .foregroundStyle(Palette.ink)
                 .multilineTextAlignment(.leading)
