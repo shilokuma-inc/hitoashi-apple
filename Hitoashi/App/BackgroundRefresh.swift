@@ -27,7 +27,8 @@ enum BackgroundRefresh {
 
     /// バックグラウンドで起こされたとき
     static func run() async {
-        await AppSession.shared.model.refresh()
+        // 次の更新を先に頼んでおく（今回の更新が時間切れで打ち切られても、次が残るように）
         schedule()
+        await AppSession.shared.model.refresh()
     }
 }
