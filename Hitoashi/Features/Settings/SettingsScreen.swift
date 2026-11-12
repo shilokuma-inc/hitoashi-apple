@@ -69,10 +69,12 @@ struct SettingsScreen: View {
                             .type(.caption)
                             .foregroundStyle(Palette.ink2)
                     }
-                    NavigationLink("提案しない題名") {
+                    NavigationLink {
                         ExcludedWordsForm()
+                    } label: {
+                        // 件数は、矢印の左に出す（badge だと矢印の右に出て、並びが逆になる）
+                        LabeledContent("提案しない題名", value: "\(model.preferences.excludedTitleWords.count)")
                     }
-                    .badge(model.preferences.excludedTitleWords.count)
                 }
 
                 Section {
