@@ -6,12 +6,16 @@
 //  閉じるボタンは常に見せる。朱は使わない（朱はひと足だけ）。
 //
 
+import StoreKit
 import SwiftUI
 
 struct PaywallView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.purchase) private var purchase
     @State private var selected: Plan = .yearly
+    @State private var isBusy = false
+    @State private var failed = false
 
     enum Plan {
         case yearly
@@ -84,10 +88,28 @@ struct PaywallView: View {
         .accessibilityIdentifier("paywall")
     }
 
+    private var store: Store? { model.environment.store }
+    private var yearlyPrice: String { store?.yearly?.displayPrice ?? "¥2,800" }
+    private var monthlyPrice: String { store?.monthly?.displayPrice ?? "¥400" }
+    private var trialDays: Int { store?.yearly?.freeTrialDays ?? 14 }
+
+    /// 年額を 12 で割った、月あたりの目安
+    private var monthlyEquivalent: String {
+        guard let yearly = store?.yearly else {
+            return "¥233"
+        }
+        return (yearly.price / 12).formatted(yearly.priceFormatStyle)
+    }
+
+    /// 見本のデータのときは、購入したことにして画面を見せる。実データで商品を取れていないときは、買えない
+    private var canPurchase: Bool {
+        model.isDemo || (selected == .yearly ? store?.yearly : store?.monthly) != nil
+    }
+
     private var plans: some View {
         VStack(spacing: 0) {
-            planRow(.yearly, price: "¥2,800", unit: "/ 年", note: "月あたり約 ¥233・14日間無料")
-            planRow(.monthly, price: "¥400", unit: "/ 月", note: "無料体験なし")
+            planRow(.yearly, price: yearlyPrice, unit: "/ 年", note: "月あたり約 \(monthlyEquivalent)・\(trialDays)日間無料")
+            planRow(.monthly, price: monthlyPrice, unit: "/ 月", note: "無料体験なし")
             Rectangle().fill(Palette.line).frame(height: 1)
         }
     }
@@ -125,38 +147,76 @@ struct PaywallView: View {
 
     private var footer: some View {
         VStack(spacing: 8) {
-            Button(selected == .yearly ? "14日間無料ではじめる" : "月額 ¥400 ではじめる") {
-                // 見本のデータのときは、購入したことにして画面を見せる（実際の購入は StoreKit の実装で入れる）
-                if model.isDemo {
-                    model.isPro = true
-                    dismiss()
-                }
+            Button(selected == .yearly ? "\(trialDays)日間無料ではじめる" : "月額 \(monthlyPrice) ではじめる") {
+                Task { await start() }
             }
             .buttonStyle(PrimaryButtonStyle())
+            .disabled(isBusy || !canPurchase)
+            .opacity(canPurchase ? 1 : 0.4)
             .accessibilityIdentifier("paywall.start")
             Group {
-                if selected == .yearly {
-                    Text("15日目に ¥2,800 が請求され、その後は 1年ごとに自動更新。無料期間が終わる 24時間前までに解約すれば請求されません。")
+                if !canPurchase {
+                    Text("いまは購入できません（商品の情報を取得できませんでした）。")
+                } else if failed {
+                    Text("購入を完了できませんでした。")
+                } else if selected == .yearly {
+                    Text("\(trialDays + 1)日目に \(yearlyPrice) が請求され、その後は 1年ごとに自動更新。無料期間が終わる 24時間前までに解約すれば請求されません。")
                 } else {
-                    Text("今日 ¥400 が請求され、その後は 1か月ごとに自動更新。期間が終わる 24時間前までに解約すれば、次の請求はありません。")
+                    Text("今日 \(monthlyPrice) が請求され、その後は 1か月ごとに自動更新。期間が終わる 24時間前までに解約すれば、次の請求はありません。")
                 }
             }
             .type(.note)
             .foregroundStyle(Palette.ink2)
             .frame(maxWidth: .infinity, alignment: .leading)
             HStack(spacing: 0) {
-                Button("購入を復元") {}
-                    .frame(maxWidth: .infinity)
-                Button("利用規約") {}
-                    .frame(maxWidth: .infinity)
-                Button("プライバシー") {}
-                    .frame(maxWidth: .infinity)
+                Button("購入を復元") {
+                    Task {
+                        await store?.restore()
+                        if model.isPro {
+                            dismiss()
+                        }
+                    }
+                }
+                .frame(maxWidth: .infinity)
+                if let terms = URL(string: "https://shilokuma.jp/terms/hitoashi/") {
+                    Link("利用規約", destination: terms)
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                }
+                if let privacy = URL(string: "https://shilokuma.jp/privacy/hitoashi/") {
+                    Link("プライバシー", destination: privacy)
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                }
             }
             .type(.captionStrong)
+            .foregroundStyle(Palette.ink)
             .buttonStyle(PlainRowButtonStyle(color: Palette.ink))
         }
         .padding(.horizontal, 24)
         .padding(.top, 10)
         .barBackground()
+    }
+
+    private func start() async {
+        // 見本のデータのときは、購入したことにして Pro の画面を見せる
+        if model.isDemo {
+            model.isPro = true
+            dismiss()
+            return
+        }
+        guard let store, let product = selected == .yearly ? store.yearly : store.monthly else {
+            return
+        }
+        isBusy = true
+        defer { isBusy = false }
+        do {
+            let result = try await purchase(product)
+            await store.handle(result)
+            failed = false
+            if store.isPro {
+                dismiss()
+            }
+        } catch {
+            failed = true
+        }
     }
 }
