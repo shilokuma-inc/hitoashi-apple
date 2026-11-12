@@ -70,25 +70,24 @@ final class NoticeScheduler: NSObject, UNUserNotificationCenterDelegate {
 
     // MARK: - UNUserNotificationCenterDelegate
 
-    nonisolated func userNotificationCenter(
+    // どちらもメインで受ける（この型はメインに属する）。OS への完了の合図もメインから返る。
+    // メイン以外から完了を返すと、通知を押したときに落ちることがある
+
+    func userNotificationCenter(
         _ center: UNUserNotificationCenter,
         willPresent notification: UNNotification
     ) async -> UNNotificationPresentationOptions {
         [.banner, .list, .sound]
     }
 
-    nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse) async {
-        let suggestionID = response.notification.request.content.userInfo[Self.suggestionKey] as? String
-        let action = response.actionIdentifier
-        await MainActor.run {
-            guard let suggestionID else {
-                return
-            }
-            if action == Self.skipAction {
-                onSkip?(suggestionID)
-            } else {
-                onOpen?(suggestionID)
-            }
+    func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse) async {
+        guard let suggestionID = response.notification.request.content.userInfo[Self.suggestionKey] as? String else {
+            return
+        }
+        if response.actionIdentifier == Self.skipAction {
+            onSkip?(suggestionID)
+        } else {
+            onOpen?(suggestionID)
         }
     }
 }
