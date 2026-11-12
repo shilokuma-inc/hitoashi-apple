@@ -15,7 +15,31 @@ struct PaywallView: View {
     @Environment(\.purchase) private var purchase
     @State private var selected: Plan = .yearly
     @State private var isBusy = false
-    @State private var failed = false
+    @State private var problem: Problem?
+
+    /// ボタンの下に出す、うまくいかなかったときの説明
+    enum Problem {
+        case purchaseFailed
+        case unverified
+        case pending
+        case restoreFailed
+        case nothingToRestore
+
+        var text: LocalizedStringKey {
+            switch self {
+            case .purchaseFailed:
+                "購入を完了できませんでした。"
+            case .unverified:
+                "購入を確認できませんでした。時間をおいて「購入を復元」を試してください。"
+            case .pending:
+                "承認待ちです。承認されると、Pro が使えるようになります。"
+            case .restoreFailed:
+                "復元できませんでした。通信の状態を確かめて、もう一度試してください。"
+            case .nothingToRestore:
+                "復元できる購入がありませんでした。"
+            }
+        }
+    }
 
     enum Plan {
         case yearly
@@ -196,10 +220,17 @@ struct PaywallView: View {
             .opacity(canPurchase ? 1 : 0.4)
             .accessibilityIdentifier("paywall.start")
             Group {
-                if !canPurchase {
-                    Text("いまは購入できません（商品の情報を取得できませんでした）。")
-                } else if failed {
-                    Text("購入を完了できませんでした。")
+                if let problem {
+                    Text(problem.text)
+                } else if !canPurchase {
+                    HStack(alignment: .firstTextBaseline, spacing: 12) {
+                        Text("いまは購入できません（商品の情報を取得できませんでした）。")
+                        Button("もう一度試す") {
+                            Task { await store?.load() }
+                        }
+                        .type(.captionStrong)
+                        .foregroundStyle(Palette.ink)
+                    }
                 } else {
                     Text(billingNote)
                 }
@@ -209,12 +240,7 @@ struct PaywallView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             HStack(spacing: 0) {
                 Button("購入を復元") {
-                    Task {
-                        await store?.restore()
-                        if model.isPro {
-                            dismiss()
-                        }
-                    }
+                    Task { await restore() }
                 }
                 .frame(maxWidth: .infinity)
                 if let terms = URL(string: "https://shilokuma.jp/terms/hitoashi/") {
@@ -249,13 +275,33 @@ struct PaywallView: View {
         defer { isBusy = false }
         do {
             let result = try await purchase(product)
-            await store.handle(result)
-            failed = false
-            if store.isPro {
+            switch await store.handle(result) {
+            case .purchased:
+                problem = nil
                 dismiss()
+            case .pending:
+                problem = .pending
+            case .cancelled:
+                problem = nil
+            case .unverified:
+                problem = .unverified
             }
         } catch {
-            failed = true
+            problem = .purchaseFailed
+        }
+    }
+
+    private func restore() async {
+        guard let store else {
+            return
+        }
+        isBusy = true
+        defer { isBusy = false }
+        let synced = await store.restore()
+        if store.isPro {
+            dismiss()
+        } else {
+            problem = synced ? .nothingToRestore : .restoreFailed
         }
     }
 }

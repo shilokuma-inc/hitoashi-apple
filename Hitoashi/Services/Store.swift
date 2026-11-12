@@ -27,13 +27,24 @@ final class Store {
 
     private var updates: Task<Void, Never>?
 
+    /// 購入の結果
+    enum PurchaseOutcome {
+        case purchased
+        /// 承認待ち（ファミリー共有の承認など）
+        case pending
+        case cancelled
+        /// 購入は通ったが、取引を検証できなかった（権利は付けない）
+        case unverified
+    }
+
     /// 商品を取り、権利を確かめ、変化を見張る
     func start() {
         guard updates == nil else {
             return
         }
+        // 権利の確認と取引の見張りは、商品の取得を待たずに始める（取得が遅いあいだ、Pro の人を無料扱いにしない）
+        Task { await load() }
         updates = Task {
-            await load()
             await refresh()
             // 更新・承認待ちの購入など、アプリの外で起きた取引もここに届く。受け取ったら完了にする
             for await update in Transaction.updates {
@@ -45,11 +56,20 @@ final class Store {
         }
     }
 
-    func load() async {
-        let products = (try? await Product.products(for: Self.productIDs)) ?? []
-        yearly = products.first { $0.id == Self.yearlyID }
+    /// 商品を取る。取れなかったとき（通信の失敗など）は、前に取れた商品を残す
+    @discardableResult
+    func load() async -> Bool {
+        guard let products = try? await Product.products(for: Self.productIDs) else {
+            return false
+        }
+        let yearlyProduct = products.first { $0.id == Self.yearlyID }
+        // 無料体験を使えるかを確かめてから、年額を買えるようにする（確かめる前に「無料」と出さない）
+        if let subscription = yearlyProduct?.subscription {
+            isEligibleForTrial = await subscription.isEligibleForIntroOffer
+        }
+        yearly = yearlyProduct
         monthly = products.first { $0.id == Self.monthlyID }
-        await checkTrial()
+        return yearly != nil && monthly != nil
     }
 
     private func checkTrial() async {
@@ -77,17 +97,37 @@ final class Store {
     }
 
     /// 購入の結果を受け取る
-    func handle(_ result: Product.PurchaseResult) async {
-        if case .success(let verification) = result, case .verified(let transaction) = verification {
+    func handle(_ result: Product.PurchaseResult) async -> PurchaseOutcome {
+        switch result {
+        case .success(let verification):
+            guard case .verified(let transaction) = verification else {
+                return .unverified
+            }
             await transaction.finish()
+            await refresh()
+            return .purchased
+        case .pending:
+            return .pending
+        case .userCancelled:
+            return .cancelled
+        @unknown default:
+            return .cancelled
         }
-        await refresh()
     }
 
-    /// 購入を復元する
-    func restore() async {
-        try? await AppStore.sync()
+    /// 購入を復元する。App Store と同期できなかったら false（自分でやめたときは true）
+    @discardableResult
+    func restore() async -> Bool {
+        var synced = true
+        do {
+            try await AppStore.sync()
+        } catch StoreKitError.userCancelled {
+            synced = true
+        } catch {
+            synced = false
+        }
         await refresh()
+        return synced
     }
 }
 
