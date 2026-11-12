@@ -28,6 +28,17 @@ struct TodayTimeline: View {
                     if let rest = plan.restDay {
                         RestDayBlock(rest: rest)
                     }
+                    if model.refreshedAt == nil {
+                        // 最初の更新が終わるまで（予定・場所・天気を集めているあいだ）
+                        HStack(spacing: 10) {
+                            ProgressView()
+                            Text("予定と天気を読み込んでいます")
+                                .type(.sub)
+                                .foregroundStyle(Palette.ink2)
+                        }
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 16)
+                    }
                     if !model.isDemo {
                         SetupHints(plan: plan)
                     }

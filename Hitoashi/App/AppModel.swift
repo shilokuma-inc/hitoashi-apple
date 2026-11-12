@@ -157,8 +157,10 @@ final class AppModel {
     }
 
     private func refreshOnce() async {
-        // 期限の切れた購入に気づくため、権利も確かめ直す
-        await environment.store?.refresh()
+        // 期限の切れた購入に気づくため、権利も確かめ直す。画面の更新は待たせない（App Store への問い合わせは数秒かかることがある）
+        if let store = environment.store {
+            Task { await store.refresh() }
+        }
         snapshot = await environment.provider.snapshot(for: worldRequest)
         snapshotGeneration += 1
         refreshedAt = now
