@@ -74,7 +74,6 @@ xcodebuild test -project Hitoashi.xcodeproj -scheme Hitoashi -destination 'platf
       <tr>
         <td style="border:2px double #000080;">branch \ workflow</td>
         <td style="border:2px double #000080;">Build</td>
-        <td style="border:2px double #000080;">Archive</td>
         <td style="border:2px double #000080;">Upload</td>
       </tr>
       <tr>
@@ -82,11 +81,6 @@ xcodebuild test -project Hitoashi.xcodeproj -scheme Hitoashi -destination 'platf
         <td style="border:2px double #000080;text-align:center;">
           <a href="https://github.com/shilokuma-inc/hitoashi-apple/actions/workflows/build.yml?query=branch%3Amain">
             <img src="https://github.com/shilokuma-inc/hitoashi-apple/actions/workflows/build.yml/badge.svg?branch=main" alt="Build">
-          </a>
-        </td>
-        <td style="border:2px double #000080;text-align:center;">
-          <a href="https://github.com/shilokuma-inc/hitoashi-apple/actions/workflows/archive.yml?query=branch%3Amain">
-            <img src="https://github.com/shilokuma-inc/hitoashi-apple/actions/workflows/archive.yml/badge.svg?branch=main" alt="Archive">
           </a>
         </td>
         <td style="border:2px double #000080;text-align:center;">
@@ -98,8 +92,6 @@ xcodebuild test -project Hitoashi.xcodeproj -scheme Hitoashi -destination 'platf
           <a href="https://github.com/shilokuma-inc/hitoashi-apple/actions/workflows/build.yml?query=branch%3Adevelop">
             <img src="https://github.com/shilokuma-inc/hitoashi-apple/actions/workflows/build.yml/badge.svg?branch=develop" alt="Build">
           </a>
-        </td>
-        <td style="border:2px double #000080;text-align:center;">
         </td>
         <td style="border:2px double #000080;text-align:center;">
           <a href="https://github.com/shilokuma-inc/hitoashi-apple/actions/workflows/upload.yml?query=branch%3Adevelop">
@@ -187,19 +179,20 @@ Upload ワークフローは、アップロードの前に TestFlight の内部�
 
 ### 6. ブランチ運用と CI
 
-| ブランチ | Build（ビルド + テスト + SwiftLint） | Archive（IPA Export） | Upload（App Store Connect） |
-|---|:-:|:-:|:-:|
-| `main` | ✅ | ✅ | |
-| `develop` | ✅ | | ✅ |
-| `release/**` | ✅ | | ✅ |
-| その他の作業ブランチ | ✅（Unit テストのみ） | | |
-| Pull Request の作成時（opened / reopened / ready_for_review） | ✅ | | |
-| Fork からの Pull Request | ✅ | | |
+| ブランチ | Build（ビルド + テスト + SwiftLint） | Upload（Archive → IPA Export → App Store Connect） |
+|---|:-:|:-:|
+| `main` | ✅ | |
+| `develop` | ✅ | ✅ |
+| `release/**` | ✅ | ✅ |
+| その他の作業ブランチ | ✅（Unit テストのみ） | |
+| Pull Request の作成時（opened / reopened / ready_for_review） | ✅ | |
+| Fork からの Pull Request | ✅ | |
 
-- Upload は Archive → IPA Export を含むため、`develop` / `release/**` では Archive を別途実行しません
-- Archive / Upload は Actions タブから手動でも実行できます（Run workflow）。作業ブランチを TestFlight で確認したいときは、Upload を手動実行してそのブランチを選びます
+- `main` への push では Build だけを実行します。`main` には `develop` / `release/**` で Upload（Archive を含む）を通したものがマージされるためです
+- Archive（IPA Export まで。アップロードはしない）は手動実行だけです。Actions タブの Run workflow から、確かめたいブランチを選んで実行します
+- Upload も手動で実行できます。作業ブランチを TestFlight で確認したいときは、Upload を手動実行してそのブランチを選びます
 - リポジトリ変数（Settings → Secrets and variables → Actions → Variables）に `ENABLE_DELIVERY=false` を設定すると Upload をスキップします（Archive は App Store Connect にアプリが無くても通るため止めません）。テンプレートリポジトリ自身はこの設定でアップロードを止めています。テンプレートから作成したリポジトリには引き継がれないため、何もしなければ従来どおり実行されます
-- ドキュメントだけの変更（`**/*.md`、`docs/**`）では Build を実行しません。Upload（`develop` / `release/**` への push）と Archive（`main` への push）は、ドキュメントだけの変更でも実行します
+- ドキュメントだけの変更（`**/*.md`、`docs/**`）では Build を実行しません。Upload（`develop` / `release/**` への push）は、ドキュメントだけの変更でも実行します
 - 作業ブランチへの push では、時間のかかる UI テスト（`<プロジェクト名>UITests`）を省いて Unit テストだけ実行します。UI テストは Pull Request の作成時と `main` / `develop` / `release/**` への push で実行します。Fork からの Pull Request は push で実行されないため、更新（synchronize）を含むすべてのイベントで UI テストまで実行します
 - Xcode のバージョンは [.github/workflows/_build.yml](.github/workflows/_build.yml) と [.github/workflows/_archive.yml](.github/workflows/_archive.yml) の `xcode-version` で固定しています。Environment の更新時はあわせて変更してください
 
@@ -351,7 +344,7 @@ API が無い・アカウントで一度だけ行うなど、ワークフロー�
         ├── _build.yml       # 共通処理: ビルド + テスト + SwiftLint（workflow_call）
         ├── _archive.yml     # 共通処理: Archive → Export（→ Upload）（workflow_call）
         ├── build.yml        # 全ブランチの push / Fork からの PR
-        ├── archive.yml      # main の push
+        ├── archive.yml      # Archive → IPA Export の確認（手動実行）
         ├── upload.yml       # develop / release/** の push
         ├── app-store-*.yml  # App Store の掲載情報の反映（手動実行）
         └── verify-app-store-metadata.yml  # 掲載情報の検査（PR）
