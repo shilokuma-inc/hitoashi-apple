@@ -1,0 +1,8 @@
+{
+  "v": 1,
+  "project": "Hitoashi.xcodeproj",
+  "scheme": "Hitoashi",
+  "platforms": ["iOS", "macOS", "visionOS"],
+  "uiTests": "HitoashiUITests",
+  "archive": { "platforms": ["iOS"] }
+}
